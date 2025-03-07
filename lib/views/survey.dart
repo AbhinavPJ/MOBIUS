@@ -28,7 +28,7 @@ class _SurveyViewState extends State<SurveyView> {
   final TextEditingController _movieGenresController = TextEditingController();
   final TextEditingController _hobbiesController = TextEditingController();
   final TextEditingController _sportsController = TextEditingController();
-
+  final TextEditingController _phonenumbercontroller = TextEditingController();
   // Dropdown selections
   String? _popularity;
   double? _personality;
@@ -43,6 +43,7 @@ class _SurveyViewState extends State<SurveyView> {
   List<String> _tempClubs = [];
   List<String> _selectedSports = [];
   List<String> _selectedClubs = [];
+  String? number;
   // Multi-page survey tracking
   int _currentPage = 0;
 
@@ -73,6 +74,7 @@ class _SurveyViewState extends State<SurveyView> {
   @override
   void dispose() {
     // Dispose controllers when widget is removed
+    _phonenumbercontroller.dispose();
     _entryNumberController.dispose();
     _musicGenresController.dispose();
     _movieGenresController.dispose();
@@ -269,6 +271,8 @@ class _SurveyViewState extends State<SurveyView> {
       "profilePicture": _imageUrl,
       "timestamp": FieldValue.serverTimestamp(),
       "userId": user.uid,
+      "number": _phonenumbercontroller.text,
+      "rightswipedby": ["peejayy"]
     };
 
     try {
@@ -471,6 +475,8 @@ class _SurveyViewState extends State<SurveyView> {
           _buildTextField("Enter your name", _nameController),
           const SizedBox(height: 20),
           _buildTextField("Enter your Entry Number", _entryNumberController),
+          const SizedBox(height: 20),
+          _buildTextField("Enter your phone number", _phonenumbercontroller),
           const SizedBox(height: 20),
           _buildDropdown("  What is your Gender?", _genders, (value) {
             setState(() {

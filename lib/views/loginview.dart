@@ -35,11 +35,11 @@ class _LoginViewState extends State<LoginView> {
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
             colors: [
-              Color.fromRGBO(0, 23, 45, 1),
-              Color.fromRGBO(0, 82, 162, 1),
+              Color.fromRGBO(185, 0, 105, 0.949),
+              Color.fromRGBO(17, 0, 150, 0.817),
             ],
           ),
         ),
@@ -62,7 +62,7 @@ class _LoginViewState extends State<LoginView> {
                   style: TextStyle(
                     fontSize: 29,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Color.fromARGB(223, 214, 168, 0),
                   ),
                 ),
               ],
@@ -79,14 +79,14 @@ class _LoginViewState extends State<LoginView> {
             const SizedBox(height: 20),
 
             // Login Button
-            _buildButton1("Login", Colors.white, Colors.black, _loginUser),
+            _buildButton1("Login", const Color.fromARGB(255, 203, 0, 85),
+                Colors.black, _loginUser),
 
             const SizedBox(height: 10),
 
             // Register Button
-            _buildButton2(
-                "Not Registered? Register here", Colors.white, Colors.black,
-                () {
+            _buildButton2("Not Registered? Register here",
+                const Color.fromARGB(255, 237, 144, 209), Colors.black, () {
               Navigator.of(context).pushNamed('/register');
             }),
           ],

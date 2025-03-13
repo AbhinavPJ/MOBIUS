@@ -42,9 +42,9 @@ class _ProfileViewState extends State<ProfileView> {
     "Squash",
     "Tennis",
     "Table tennis",
-    "Atheltics",
+    "Athletics",
     "Volleyball",
-    "Basketabll",
+    "Basketball",
     "Chess",
     "Weightlifting",
     "Competitive programming",
@@ -75,7 +75,6 @@ class _ProfileViewState extends State<ProfileView> {
     "Drama club",
     "Spic Macay"
   ];
-
   final List<String> _allMovieGenres = [
     "Action",
     "Comedy",
@@ -90,7 +89,6 @@ class _ProfileViewState extends State<ProfileView> {
     "Musical",
     "Adventure"
   ];
-
   final List<String> _allMusicGenres = [
     "Rock",
     "Pop",
@@ -125,29 +123,122 @@ class _ProfileViewState extends State<ProfileView> {
 
       widget.onProfileUpdated();
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Profile updated!')));
+          .showSnackBar(const SnackBar(content: Text('Profile updated!')));
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error updating profile: $e')));
     }
   }
 
-  Widget _buildMultiSelectField({
-    required String label,
-    required bool isEditing,
-    required List<String> options,
-    required List<String> selectedValues,
-    required VoidCallback onEdit,
-    required Function(List<String>) onSelectionChanged,
-  }) {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 46, 49, 73),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          "Edit Profile",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSingleSelectField(
+              label: "Hangout Spot",
+              isEditing: _isEditingHangout,
+              options: _hangoutSpots,
+              selectedValue: _selectedHangoutSpot,
+              onEdit: () {
+                if (_isEditingHangout) {
+                  _saveProfile('hangout_spot', _selectedHangoutSpot);
+                }
+                setState(() => _isEditingHangout = !_isEditingHangout);
+              },
+              onSelectionChanged: (newSelection) => setState(() {
+                _selectedHangoutSpot = newSelection;
+              }),
+            ),
+            _buildMultiSelectField(
+                "Clubs", _isEditingClubs, _allClubs, _selectedClubs, () {
+              if (_isEditingClubs) {
+                _saveProfile('clubs', _selectedClubs);
+              }
+              setState(() => _isEditingClubs = !_isEditingClubs);
+            }),
+            _buildMultiSelectField("Movie Genres", _isEditingMovieGenres,
+                _allMovieGenres, _selectedMovieGenres, () {
+              if (_isEditingMovieGenres) {
+                _saveProfile('movie_genres', _selectedMovieGenres);
+              }
+              setState(() => _isEditingMovieGenres = !_isEditingMovieGenres);
+            }),
+            _buildMultiSelectField("Music Genres", _isEditingMusicGenres,
+                _allMusicGenres, _selectedMusicGenres, () {
+              if (_isEditingMusicGenres) {
+                _saveProfile('music_genres', _selectedMusicGenres);
+              }
+              setState(() => _isEditingMusicGenres = !_isEditingMusicGenres);
+            }),
+            _buildMultiSelectField(
+                "Sports", _isEditingSports, _allSports, _selectedSports, () {
+              if (_isEditingSports) {
+                _saveProfile('sports', _selectedSports);
+              }
+              setState(() => _isEditingSports = !_isEditingSports);
+            }),
+            const SizedBox(height: 20),
+
+            // Logout Button
+            Center(
+              child: ElevatedButton(
+                onPressed: () async {
+                  await FirebaseAuth.instance.signOut();
+                  Navigator.of(context)
+                      .pushNamedAndRemoveUntil('/login', (route) => false);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  textStyle: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                child: const Text("Logout"),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMultiSelectField(String label, bool isEditing,
+      List<String> options, List<String> selectedValues, VoidCallback onEdit) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Text(label,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Spacer(),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.white)),
+            const Spacer(),
             IconButton(
               icon: Icon(isEditing ? Icons.check : Icons.edit,
                   color: Colors.blue),
@@ -158,34 +249,23 @@ class _ProfileViewState extends State<ProfileView> {
         isEditing
             ? Wrap(
                 spacing: 8.0,
-                children: options.map((option) {
-                  final isSelected = selectedValues.contains(option);
-                  return FilterChip(
-                    label: Text(option),
-                    selected: isSelected,
-                    onSelected: (bool selected) {
-                      if (selected && selectedValues.length >= 5) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content:
-                                  Text('You can select up to 5 items only.')),
-                        );
-                        return;
-                      }
-                      final updatedSelection =
-                          List<String>.from(selectedValues);
-                      if (selected) {
-                        updatedSelection.add(option);
-                      } else {
-                        updatedSelection.remove(option);
-                      }
-                      onSelectionChanged(updatedSelection);
-                    },
-                  );
-                }).toList(),
+                children: options
+                    .map((option) => FilterChip(
+                          label: Text(option),
+                          selected: selectedValues.contains(option),
+                          onSelected: (selected) {
+                            setState(() {
+                              selected
+                                  ? selectedValues.add(option)
+                                  : selectedValues.remove(option);
+                            });
+                          },
+                        ))
+                    .toList(),
               )
-            : Text(selectedValues.join(', '), style: TextStyle(fontSize: 16)),
-        SizedBox(height: 16),
+            : Text(selectedValues.join(', '),
+                style: const TextStyle(fontSize: 16, color: Colors.white)),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -204,7 +284,10 @@ class _ProfileViewState extends State<ProfileView> {
         Row(
           children: [
             Text(label,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.white)),
             Spacer(),
             IconButton(
               icon: Icon(isEditing ? Icons.check : Icons.edit,
@@ -226,127 +309,10 @@ class _ProfileViewState extends State<ProfileView> {
                   }
                 },
               )
-            : Text(selectedValue, style: TextStyle(fontSize: 16)),
+            : Text(selectedValue,
+                style: TextStyle(fontSize: 16, color: Colors.white)),
         SizedBox(height: 16),
       ],
-    );
-  }
-
-  Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
-    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSingleSelectField(
-              label: "Hangout Spot",
-              isEditing: _isEditingHangout,
-              options: _hangoutSpots,
-              selectedValue: _selectedHangoutSpot,
-              onEdit: () {
-                if (_isEditingHangout) {
-                  _saveProfile('hangout_spot', _selectedHangoutSpot);
-                }
-                setState(() {
-                  _isEditingHangout = !_isEditingHangout;
-                });
-              },
-              onSelectionChanged: (newSelection) => setState(() {
-                _selectedHangoutSpot = newSelection;
-              }),
-            ),
-            _buildMultiSelectField(
-              label: "Clubs",
-              isEditing: _isEditingClubs,
-              options: _allClubs,
-              selectedValues: _selectedClubs,
-              onEdit: () {
-                if (_isEditingClubs) {
-                  _saveProfile('clubs', _selectedClubs);
-                }
-                setState(() {
-                  _isEditingClubs = !_isEditingClubs;
-                });
-              },
-              onSelectionChanged: (newSelection) => setState(() {
-                _selectedClubs = newSelection;
-              }),
-            ),
-            _buildMultiSelectField(
-              label: "Movie Genres",
-              isEditing: _isEditingMovieGenres,
-              options: _allMovieGenres,
-              selectedValues: _selectedMovieGenres,
-              onEdit: () {
-                if (_isEditingMovieGenres) {
-                  _saveProfile('movie_genres', _selectedMovieGenres);
-                }
-                setState(() {
-                  _isEditingMovieGenres = !_isEditingMovieGenres;
-                });
-              },
-              onSelectionChanged: (newSelection) => setState(() {
-                _selectedMovieGenres = newSelection;
-              }),
-            ),
-            _buildMultiSelectField(
-              label: "Music genres",
-              isEditing: _isEditingMusicGenres,
-              options: _allMusicGenres,
-              selectedValues: _selectedMusicGenres,
-              onEdit: () {
-                if (_isEditingMusicGenres) {
-                  _saveProfile('music_genres', _selectedMusicGenres);
-                }
-                setState(() {
-                  _isEditingMusicGenres = !_isEditingMusicGenres;
-                });
-              },
-              onSelectionChanged: (newSelection) => setState(() {
-                _selectedMusicGenres = newSelection;
-              }),
-            ),
-            _buildMultiSelectField(
-              label: "Sports",
-              isEditing: _isEditingSports,
-              options: _allSports,
-              selectedValues: _selectedSports,
-              onEdit: () {
-                if (_isEditingSports) {
-                  _saveProfile('sports', _selectedSports);
-                }
-                setState(() {
-                  _isEditingSports = !_isEditingSports;
-                });
-              },
-              onSelectionChanged: (newSelection) => setState(() {
-                _selectedSports = newSelection;
-              }),
-            ),
-            SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: _logout,
-                child: Text("Logout"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  textStyle:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

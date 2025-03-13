@@ -12,13 +12,11 @@ class RegisterView extends StatefulWidget {
 class _RegisterViewState extends State<RegisterView> {
   late final TextEditingController _email;
   late final TextEditingController _password;
-  late final TextEditingController _name;
 
   @override
   void initState() {
     _email = TextEditingController();
     _password = TextEditingController();
-    _name = TextEditingController();
     super.initState();
   }
 
@@ -26,13 +24,20 @@ class _RegisterViewState extends State<RegisterView> {
   void dispose() {
     _email.dispose();
     _password.dispose();
-    _name.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -41,62 +46,75 @@ class _RegisterViewState extends State<RegisterView> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromRGBO(0, 23, 45, 1),
-              Color.fromRGBO(0, 82, 162, 1),
+              Color.fromRGBO(0, 0, 0, 1),
+              Color.fromRGBO(10, 10, 10, 1),
             ],
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            const SizedBox(height: 80),
-
-            // App Logo
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(
-                  'assets/images/logo.png',
-                  height: 130,
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  "MOBIUS",
-                  style: TextStyle(
-                    fontSize: 29,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+            Expanded(
+              flex: 2,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 120,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 15),
+                  const Text(
+                    "MOBIUS",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color.fromARGB(255, 179, 255, 0),
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Swipe. Match. Meet. Exclusively for IITD.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
             ),
 
-            const SizedBox(height: 80),
+            const SizedBox(height: 40), // Increased spacing
 
-            // Name Field
-            _buildTextField(_name, "Enter full name", false),
-            const SizedBox(height: 10),
-
-            // Email Field
-            _buildTextField(_email, "Enter email", false),
-            const SizedBox(height: 10),
-
-            // Password Field
-            _buildTextField(_password, "Enter password", true),
-            const SizedBox(height: 20),
-
-            // Register Button
-            _buildButton1(
-                "Register", Colors.white, Colors.black, _registerUser),
-
-            const SizedBox(height: 10),
-
-            // Login Button
-            _buildButton2(
-                "Already Registered? Login Here", Colors.white, Colors.black,
-                () {
-              Navigator.of(context).pushNamed('/login');
-            }),
+            Expanded(
+              flex: 3,
+              child: Column(
+                children: [
+                  _buildTextField(_email, "Enter email", false),
+                  const SizedBox(height: 20), // Increased spacing
+                  _buildTextField(_password, "Enter password", true),
+                  const SizedBox(height: 30), // Increased spacing
+                  _buildButton(
+                      "Register", Colors.white, Colors.black, _registerUser),
+                  const SizedBox(height: 20), // Increased spacing
+                  TextButton(
+                    onPressed: () => Navigator.pushNamed(context, '/login'),
+                    child: const Text(
+                      "Already Registered? Login Here",
+                      style: TextStyle(
+                        color: Color.fromARGB(255, 179, 255, 80),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -106,9 +124,8 @@ class _RegisterViewState extends State<RegisterView> {
   Future<void> _registerUser() async {
     final email = _email.text.trim();
     final password = _password.text.trim();
-    final name = _name.text.trim();
 
-    if (email.isEmpty || password.isEmpty || name.isEmpty) {
+    if (email.isEmpty || password.isEmpty) {
       _showError("All fields are required");
       return;
     }
@@ -119,7 +136,6 @@ class _RegisterViewState extends State<RegisterView> {
     }
 
     try {
-      // 🔹 Create user in Firebase Authentication
       UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
@@ -128,26 +144,18 @@ class _RegisterViewState extends State<RegisterView> {
 
       final uid = userCredential.user!.uid;
 
-      // 🔹 Store user details in Firestore
       await FirebaseFirestore.instance.collection("users").doc(uid).set({
         "uid": uid,
-        "name": name,
         "email": email,
         "created_at": FieldValue.serverTimestamp(),
       });
 
-      // 🔹 Send email verification
       await userCredential.user?.sendEmailVerification();
-
       print("User Registered & Data Saved Successfully!");
-
-      // 🔹 Redirect to verification page
       Navigator.of(context)
           .pushNamedAndRemoveUntil('/verify', (route) => false);
     } on FirebaseAuthException catch (e) {
-      String errorMessage = e.code;
-     // print(e.toString());
-      _showError(errorMessage);
+      _showError(e.code);
     }
   }
 
@@ -167,10 +175,6 @@ class _RegisterViewState extends State<RegisterView> {
       child: TextField(
         controller: controller,
         obscureText: isPassword,
-        enableSuggestions: !isPassword,
-        autocorrect: !isPassword,
-        keyboardType:
-            isPassword ? TextInputType.text : TextInputType.emailAddress,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           hintText: hintText,
@@ -186,16 +190,16 @@ class _RegisterViewState extends State<RegisterView> {
     );
   }
 
-  Widget _buildButton1(
+  Widget _buildButton(
       String text, Color bgColor, Color textColor, VoidCallback onPressed) {
     return SizedBox(
-      width: 180,
-      height: 45,
+      width: 200,
+      height: 48,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: bgColor,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25),
+            borderRadius: BorderRadius.circular(30),
           ),
         ),
         onPressed: onPressed,
@@ -203,32 +207,7 @@ class _RegisterViewState extends State<RegisterView> {
           text,
           style: TextStyle(
             color: textColor,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildButton2(
-      String text, Color bgColor, Color textColor, VoidCallback onPressed) {
-    return SizedBox(
-      width: 260,
-      height: 45,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: bgColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25),
-          ),
-        ),
-        onPressed: onPressed,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),

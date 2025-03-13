@@ -29,6 +29,16 @@ class _SurveyViewState extends State<SurveyView> {
   final TextEditingController _hobbiesController = TextEditingController();
   final TextEditingController _sportsController = TextEditingController();
   final TextEditingController _phonenumbercontroller = TextEditingController();
+
+  // Focus nodes for each text field
+  final FocusNode _nameFocusNode = FocusNode();
+  final FocusNode _entryNumberFocusNode = FocusNode();
+  final FocusNode _phoneNumberFocusNode = FocusNode();
+  final FocusNode _musicGenresFocusNode = FocusNode();
+  final FocusNode _movieGenresFocusNode = FocusNode();
+  final FocusNode _hobbiesFocusNode = FocusNode();
+  final FocusNode _sportsFocusNode = FocusNode();
+
   // Dropdown selections
   String? _popularity;
   double? _personality;
@@ -80,6 +90,16 @@ class _SurveyViewState extends State<SurveyView> {
     _movieGenresController.dispose();
     _hobbiesController.dispose();
     _sportsController.dispose();
+
+    // Dispose focus nodes
+    _nameFocusNode.dispose();
+    _entryNumberFocusNode.dispose();
+    _phoneNumberFocusNode.dispose();
+    _musicGenresFocusNode.dispose();
+    _movieGenresFocusNode.dispose();
+    _hobbiesFocusNode.dispose();
+    _sportsFocusNode.dispose();
+
     super.dispose();
   }
 
@@ -306,8 +326,8 @@ class _SurveyViewState extends State<SurveyView> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromRGBO(1, 111, 162, 0.82),
-              Color.fromRGBO(15, 172, 36, 0.653),
+              Color.fromRGBO(0, 0, 0, 1),
+              Color.fromRGBO(0, 0, 0, 1),
             ],
           ),
         ),
@@ -330,7 +350,7 @@ class _SurveyViewState extends State<SurveyView> {
                     style: TextStyle(
                       fontSize: 29,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Color.fromARGB(255, 179, 255, 0),
                     ),
                   ),
                 ],
@@ -472,11 +492,34 @@ class _SurveyViewState extends State<SurveyView> {
             ),
           ),
           const SizedBox(height: 20),
-          _buildTextField("Enter your name", _nameController),
+          _buildTextField(
+            "Enter your name",
+            _nameController,
+            focusNode: _nameFocusNode,
+            onSubmitted: (value) {
+              FocusScope.of(context).requestFocus(_entryNumberFocusNode);
+            },
+          ),
           const SizedBox(height: 20),
-          _buildTextField("Enter your Entry Number", _entryNumberController),
+          _buildTextField(
+            "Enter your Entry Number",
+            _entryNumberController,
+            focusNode: _entryNumberFocusNode,
+            onSubmitted: (value) {
+              FocusScope.of(context).requestFocus(_phoneNumberFocusNode);
+            },
+          ),
           const SizedBox(height: 20),
-          _buildTextField("Enter your phone number", _phonenumbercontroller),
+          _buildTextField(
+            "Enter your phone number",
+            _phonenumbercontroller,
+            focusNode: _phoneNumberFocusNode,
+            onSubmitted: (value) {
+              // No more text fields on this page, so we'll handle differently
+              // Either focus on the dropdown or just move to next page
+              _nextPage();
+            },
+          ),
           const SizedBox(height: 20),
           _buildDropdown("  What is your Gender?", _genders, (value) {
             setState(() {
@@ -855,7 +898,8 @@ class _SurveyViewState extends State<SurveyView> {
             fontSize: 12,
           ),
         ),
-        backgroundColor: selected ? Colors.redAccent : Colors.grey[850],
+        backgroundColor:
+            selected ? Color.fromARGB(255, 179, 255, 0) : Colors.grey[850],
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15),
           side: BorderSide(
@@ -1002,11 +1046,12 @@ class _SurveyViewState extends State<SurveyView> {
   }
 
   Widget _buildTextField(String hint, TextEditingController controller,
-      {int maxLines = 1}) {
+      {int maxLines = 1, FocusNode? focusNode, Function(String)? onSubmitted}) {
     return TextField(
       controller: controller,
       style: const TextStyle(color: Colors.white),
       maxLines: maxLines,
+      focusNode: focusNode,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.white),
@@ -1023,6 +1068,7 @@ class _SurveyViewState extends State<SurveyView> {
           borderSide: const BorderSide(color: Colors.white, width: 1),
         ),
       ),
+      onSubmitted: onSubmitted,
     );
   }
 

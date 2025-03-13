@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_application_2/views/animatedmatch.dart';
 import 'package:flutter_application_2/views/profileview.dart';
 import 'package:groq/groq.dart';
 import 'dart:math' as math;
@@ -86,12 +87,19 @@ class MatchmakingScreen extends StatefulWidget {
 
 // Removing _isDisposed state variable and related code
 class _MatchmakingScreenState extends State<MatchmakingScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   // Animation controller for the flip card
   late AnimationController _flipController;
   late Animation<double> _flipAnimation;
-  bool _isFrontVisible = true;
+  // New animation controllers for swipe transitions
+  late AnimationController _swipeController;
+  late Animation<Offset> _swipeAnimation;
+  late Animation<double> _fadeAnimation;
 
+  final _random = math.Random();
+  bool _isAnimating = false; // Track if the card was accepted or rejected
+  bool _isFrontVisible = true;
+  bool _isLastProfile = false; // Add this to your state variables
   MatchmakingProfile? currentUserProfile;
   List<MatchmakingProfile> potentialMatches = [];
   List<MapEntry<MatchmakingProfile, double>> rankedMatches = [];
@@ -115,13 +123,40 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
           setState(() {});
         }
       });
+    // Initialize the swipe animation controller
+    _swipeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
 
+    _swipeAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(1.5, 0), // Will be updated based on swipe direction
+    ).animate(CurvedAnimation(
+      parent: _swipeController,
+      curve: Curves.easeOut,
+    ));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _swipeController,
+      curve: const Interval(0.5, 1.0, curve: Curves.easeIn),
+    ));
+
+    _swipeController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _finishSwipeTransition();
+      }
+    });
     _fetchUserProfiles();
   }
 
   @override
   void dispose() {
     _flipController.dispose();
+    _swipeController.dispose();
     super.dispose();
   }
 
@@ -527,42 +562,6 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     }
   }
 
-  void _moveToNextMatch() {
-    if (!mounted) return;
-
-    setState(() {
-      // Make sure card is showing front side for the next profile
-      if (!_isFrontVisible) {
-        _flipCard();
-      }
-      if (currentMatchIndex + 1 == potentialMatches.length) {
-        _makefinalmpage();
-        return;
-      }
-      currentMatchIndex = (currentMatchIndex + 1) % potentialMatches.length;
-
-      // Load the description for the new profile
-      _loadProfileDescription(potentialMatches[currentMatchIndex]);
-    });
-  }
-
-  void _moveToPreviousMatch() {
-    if (!mounted) return;
-
-    setState(() {
-      // Make sure card is showing front side for the next profile
-      if (!_isFrontVisible) {
-        _flipCard();
-      }
-
-      currentMatchIndex = (currentMatchIndex - 1 + potentialMatches.length) %
-          potentialMatches.length;
-
-      // Load the description for the new profile
-      _loadProfileDescription(potentialMatches[currentMatchIndex]);
-    });
-  }
-
   Future<String> _generateProfileDescription(
       MatchmakingProfile currentMatch) async {
     String promptu = """
@@ -638,6 +637,81 @@ Business and Consulting club:Business and consulting club
     }
   }
 
+  // Helper method to reset and prepare for next animation
+  void _moveToNextMatch({bool accepted = false}) {
+    if (!mounted) return;
+
+    // First, check if this is the last profile
+    bool isLastProfile = currentMatchIndex + 1 >= potentialMatches.length;
+
+    // If it's the last profile, we'll handle it differently at the end of animation
+    _prepareForNextAnimation(accepted, isLastProfile);
+    _swipeController.forward();
+
+    // Make sure card is showing front side for the next profile
+    if (!_isFrontVisible) {
+      _flipCard();
+    }
+
+    // Don't increment match index or load next profile yet
+    // This will happen in _finishSwipeTransition
+  }
+
+// Helper method to reset and prepare for next animation
+  void _prepareForNextAnimation(bool accepted, bool isLastProfile) {
+    if (mounted) {
+      // Generate random vertical offset between -0.5 and 0.5
+      double randomVerticalOffset = (_random.nextDouble() - 0.5);
+      // Generate random rotation angle between -0.2 and 0.2 radians
+
+      setState(() {
+        _isAnimating = true;
+        _isLastProfile = isLastProfile;
+
+        // Set the horizontal direction based on acceptance
+        double horizontalDirection = accepted ? 1.5 : -1.5;
+
+        // Create the animation with random vertical component
+        _swipeAnimation = Tween<Offset>(
+          begin: Offset.zero,
+          end: Offset(horizontalDirection, randomVerticalOffset),
+        ).animate(CurvedAnimation(
+          parent: _swipeController,
+          curve: Curves.easeOut,
+        ));
+
+        // Add rotation to the animation
+      });
+    }
+  }
+
+// Complete the transition after animation
+  void _finishSwipeTransition() {
+    if (!mounted) return;
+
+    // Check if this was the last profile
+    if (_isLastProfile) {
+      _makefinalmpage();
+      return;
+    }
+
+    setState(() {
+      _isAnimating = false;
+      _swipeController.reset();
+
+      // Make sure card is showing front side for the next profile
+      if (!_isFrontVisible) {
+        _isFrontVisible = true;
+      }
+
+      // Now increment the index after animation completes
+      currentMatchIndex = (currentMatchIndex + 1) % potentialMatches.length;
+
+      // Load the description for the new profile
+      _loadProfileDescription(potentialMatches[currentMatchIndex]);
+    });
+  }
+
   // Modified AClogic method to not require context
   Future<bool> AClogic(
       MatchmakingProfile currentUser, MatchmakingProfile match) async {
@@ -710,7 +784,7 @@ Business and Consulting club:Business and consulting club
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: Color.fromARGB(255, 179, 255, 1),
             ),
           ),
         ],
@@ -737,8 +811,8 @@ Business and Consulting club:Business and consulting club
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromRGBO(0, 23, 45, 1),
-              Color.fromRGBO(0, 82, 162, 1),
+              Color.fromRGBO(0, 0, 0, 1),
+              Color.fromRGBO(0, 0, 0, 1),
             ],
           ),
         ),
@@ -750,28 +824,22 @@ Business and Consulting club:Business and consulting club
   void _showProfileDialog(BuildContext context) {
     if (currentUserProfile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile is still loading. Please try again.')),
+        const SnackBar(
+            content: Text('Profile is still loading. Please try again.')),
       );
       return;
     }
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: ProfileView(
-            profile: currentUserProfile!,
-            onProfileUpdated: () {
-              // Refresh data after profile update
-              _fetchUserProfiles();
-              Navigator.of(context).pop();
-            },
-          ),
-        );
-      },
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileView(
+          profile: currentUserProfile!,
+          onProfileUpdated: () {
+            _fetchUserProfiles(); // Refresh profile data
+          },
+        ),
+      ),
     );
   }
 
@@ -779,32 +847,31 @@ Business and Consulting club:Business and consulting club
   void _showMatchPopup(
       MatchmakingProfile currentUser, MatchmakingProfile match) {
     if (!mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
-        title: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle, color: Colors.green, size: 80),
-            SizedBox(height: 10),
-            Text("It's a Match! 🎉",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            Text(
-                "You and ${match.name} have matched! Whatsapp on ${match.number}",
-                style: TextStyle(fontSize: 18)),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green, foregroundColor: Colors.white),
-              child: Text("Awesome!"),
-            ),
-          ],
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            MatchAnimationView(
+          currentUser: currentUser,
+          match: match,
         ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 1.0);
+          const end = Offset.zero;
+          const curve = Curves.easeOutCubic;
+
+          var tween =
+              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var offsetAnimation = animation.drive(tween);
+
+          return SlideTransition(
+            position: offsetAnimation,
+            child: FadeTransition(
+              opacity: animation,
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 500),
       ),
     );
   }
@@ -869,39 +936,47 @@ Business and Consulting club:Business and consulting club
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromRGBO(1, 111, 162, 0.82),
-              Color.fromRGBO(15, 172, 36, 0.653),
+              Color.fromARGB(255, 0, 0, 0),
+              Color.fromARGB(255, 0, 0, 0)
             ],
           ),
         ),
-        child: GestureDetector(
-          // Handle vertical swipes for next/previous profile
-          onVerticalDragEnd: (details) {
-            if (details.velocity.pixelsPerSecond.dy > 0) {
-              _moveToPreviousMatch();
-            } else if (details.velocity.pixelsPerSecond.dy < 0) {
-              _moveToNextMatch();
-            }
-          },
-          // Handle horizontal swipes and taps for card flip
-          onHorizontalDragEnd: (details) {
-            if (details.primaryVelocity != null) {
-              _flipCard();
-            }
-          },
-          onTap: () {
-            _flipCard();
-          },
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Transform(
-                transform: Matrix4.rotationY(_flipAnimation.value * math.pi),
-                alignment: Alignment.center,
-                child: _isFrontVisible
-                    ? _buildFrontCard(currentMatch, matchScore)
-                    : _buildBackCard(currentMatch),
-              ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Stack(
+              children: [
+                // Current profile card with swipe animation
+                SlideTransition(
+                  position: _swipeAnimation,
+                  child: Transform(
+                    transform:
+                        Matrix4.rotationY(_flipAnimation.value * math.pi),
+                    alignment: Alignment.center,
+                    child: _isFrontVisible
+                        ? _buildFrontCard(currentMatch, matchScore)
+                        : _buildBackCard(currentMatch),
+                  ),
+                ),
+
+                // Fade in next profile card if animating
+                if (_isAnimating &&
+                    currentMatchIndex + 1 < potentialMatches.length)
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Transform(
+                      transform: Matrix4.rotationY(0),
+                      alignment: Alignment.center,
+                      child: _buildFrontCard(
+                        potentialMatches[
+                            (currentMatchIndex + 1) % potentialMatches.length],
+                        rankedMatches[
+                                (currentMatchIndex + 1) % rankedMatches.length]
+                            .value,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -913,96 +988,145 @@ Business and Consulting club:Business and consulting club
     return Transform(
       alignment: Alignment.center,
       transform: Matrix4.rotationY(math.pi),
-      child: Container(
-        width: 390,
-        height: 660,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Color(0xFFFFD700), width: 10),
-          color: Colors.blue.shade400,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black54,
-              offset: Offset(2, 2),
-              blurRadius: 4,
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Name
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                currentMatch.name,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Background Container
+          Container(
+            width: 390,
+            height: 660,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFFFD700), width: 10),
+              color: const Color.fromARGB(
+                  255, 46, 49, 73), // Same dark blue as front
+              boxShadow: [
+                const BoxShadow(
+                  color: Colors.black54,
+                  offset: Offset(2, 2),
+                  blurRadius: 4,
                 ),
-              ),
+              ],
             ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                const SizedBox(height: 220), // Space for profile image
 
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                // Name
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Text(
+                    currentMatch.name,
+                    style: const TextStyle(
+                      fontSize: 25,
+                      fontFamily: "assets/fonts/futura.ttf",
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                  child: isLoadingDescription
-                      ? Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.deepOrange,
-                          ),
-                        )
-                      : SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Profile Insights:',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.deepOrange,
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                              SizedBox(height: 12),
-                              Text(
-                                currentDescription ??
-                                    'No description available',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.black87,
-                                  height: 1.6,
-                                ),
-                                textAlign: TextAlign.justify,
-                              ),
-                            ],
-                          ),
-                        ),
                 ),
-              ),
-            ),
 
-            // Info on how to flip back
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                'Tap to flip back',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontStyle: FontStyle.italic,
-                  color: Colors.white,
+                // Description Box
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: isLoadingDescription
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.deepOrange,
+                              ),
+                            )
+                          : SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Profile Insights:',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.deepOrange,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    currentDescription ??
+                                        'No description available',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black87,
+                                      height: 1.6,
+                                    ),
+                                    textAlign: TextAlign.justify,
+                                  ),
+                                ],
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+
+                // Gradient Flip Button (Same as Front)
+                const SizedBox(height: 15),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF7B61FF), Color(0xFFFF477E)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: TextButton(
+                    onPressed: _flipCard,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text(
+                      "Flip Back",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+
+          // Profile Image Positioned at the Top
+          Positioned(
+            top: 40,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ClipOval(
+                child: Image.network(
+                  currentMatch.profilePicture,
+                  width: 180, // Same size as front
+                  height: 180,
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1014,21 +1138,6 @@ Business and Consulting club:Business and consulting club
       clipBehavior: Clip.none,
       children: [
         // Profile Image (Moved Up)
-        Positioned(
-          top: 40,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: ClipRRect(
-              child: Image.network(
-                currentMatch.profilePicture,
-                width: 340,
-                height: 300,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-        ),
 
         // Background Container
         Container(
@@ -1036,39 +1145,66 @@ Business and Consulting club:Business and consulting club
           height: 660,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Color(0xFFFFD700), width: 10),
-            image: DecorationImage(
-              image: AssetImage('assets/images/poke.png'),
-              fit: BoxFit.cover,
-            ),
+            color: Color.fromARGB(255, 46, 49, 73),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               // Added space since image moved up
-              const SizedBox(height: 7),
+              const SizedBox(height: 240),
               Text(
                 currentMatch.name,
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 25,
                   fontFamily: "assets/fonts/futura.ttf",
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: const Color.fromARGB(255, 254, 254, 254),
                 ),
               ),
-              const SizedBox(height: 307),
+              const SizedBox(height: 10),
               Text(
                 currentMatch.tagline,
                 style: TextStyle(
                     fontSize: 14,
-                    color: Colors.black,
-                    fontFamily: "assets/fonts/times.ttf",
+                    color: const Color.fromARGB(255, 255, 255, 255),
+                    fontFamily: "assets/fonts/futura.ttf",
                     fontWeight: FontWeight.normal,
-                    fontStyle: FontStyle.italic),
+                    fontStyle: FontStyle.normal),
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFF7B61FF),
+                      Color(0xFFFF477E)
+                    ], // Purple to Pink
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: TextButton(
+                  onPressed: _flipCard,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30)),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text(
+                    "Flip Me",
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1084,9 +1220,9 @@ Business and Consulting club:Business and consulting club
                       Text(
                         "Match Score : $beta",
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            color: Colors.white),
                       ),
                     ],
                   ),
@@ -1103,9 +1239,9 @@ Business and Consulting club:Business and consulting club
                       Text(
                         Fetchyear(currentMatch),
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            color: Colors.white),
                       ),
                     ],
                   ),
@@ -1123,7 +1259,9 @@ Business and Consulting club:Business and consulting club
                         child: Text(
                           Fetchdept(currentMatch),
                           style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 20),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              color: Colors.white),
                           softWrap: true,
                         ),
                       ),
@@ -1137,7 +1275,7 @@ Business and Consulting club:Business and consulting club
                       ClipPath(
                         clipper: CustomShapeClipper(),
                         child: ElevatedButton(
-                          onPressed: () => _moveToNextMatch(),
+                          onPressed: () => _moveToNextMatch(accepted: false),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             padding: const EdgeInsets.symmetric(
@@ -1161,11 +1299,8 @@ Business and Consulting club:Business and consulting club
                         child: ElevatedButton(
                           onPressed: () {
                             if (currentUserProfile != null) {
-                              // Call AClogic without the context parameter
-
-                              AClogic(currentUserProfile!, currentMatch).then(
-                                  (isMatch) =>
-                                      {if (!isMatch) _moveToNextMatch()});
+                              AClogic(currentUserProfile!, currentMatch);
+                              _moveToNextMatch(accepted: true);
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -1189,6 +1324,54 @@ Business and Consulting club:Business and consulting club
                 ],
               ),
             ],
+          ),
+        ),
+        Positioned(
+          top: 40,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: ClipOval(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Profile Image with Loading Indicator
+                  Image.network(
+                    currentMatch.profilePicture,
+                    width: 180, // Adjust size as needed
+                    height: 180,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) {
+                        return child; // Image is fully loaded
+                      }
+                      return SizedBox(
+                        width: 180,
+                        height: 180,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    (loadingProgress.expectedTotalBytes ?? 1)
+                                : null,
+                            color: Colors.white, // Change color if needed
+                          ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 180,
+                        height: 180,
+                        color: Colors.grey[300], // Fallback color
+                        child: const Icon(Icons.person,
+                            size: 80, color: Colors.grey),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ],

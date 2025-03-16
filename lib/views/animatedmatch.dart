@@ -34,7 +34,7 @@ class _MatchAnimationViewState extends State<MatchAnimationView>
   @override
   void initState() {
     super.initState();
-
+    print("fuck bro");
     // Initialize confetti controller
     _confettiController =
         ConfettiController(duration: const Duration(seconds: 5));

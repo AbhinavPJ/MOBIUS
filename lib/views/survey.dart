@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:groq/groq.dart';
 import 'package:image_picker/image_picker.dart';
 
 class SurveyView extends StatefulWidget {
@@ -201,8 +202,20 @@ class _SurveyViewState extends State<SurveyView> {
       setState(() {
         _isUploading = false;
       });
+      print("$e");
       _showSnackBar("Error uploading image: $e", isError: true);
     }
+  }
+
+  final groq = Groq(
+    apiKey: "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",
+    model: "llama-3.3-70b-versatile", // Optional: specify a model
+  );
+
+  Future<String> getLLMReply(String prompt) async {
+    groq.startChat();
+    GroqResponse response = await groq.sendMessage(prompt);
+    return (response.choices.first.message.content);
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -212,6 +225,60 @@ class _SurveyViewState extends State<SurveyView> {
         backgroundColor: isError ? Colors.red : null,
       ),
     );
+  }
+
+  Future<String> _generateProfileDescription(
+      String name,
+      String gender,
+      List<String> clubs,
+      List<String> sports,
+      List<String> movieGenres,
+      List<String> musicGenres,
+      String hangoutSpot,
+      String relationshipType) async {
+    String promptu = """
+Generate a short,sweet,insightful,fun,quirky,positive description of a person based on the following characteristics.The goal is to create a relationship
+ between the person described and the person reading this.
+ Try to infer from the fields below what a person might actually be like in person:
+
+Name: ${name}
+Gender: ${gender}
+
+Interests:
+- Clubs: ${clubs.join(', ')}
+- Sports: ${sports.join(', ')}
+- Movie Genres: ${movieGenres.join(', ')}
+- Music Genres: ${musicGenres.join(', ')}
+- Hangout Spot: ${hangoutSpot}
+- Relationship Type: ${relationshipType}
+
+here is what each club means:
+
+Aeromodelling: Design,Construction,Flying of model aircraft by applying aerodynamic analysis
+AXLR8R: Engineers create a superfast open-wheel formula-one style electric car within a year
+PAC: Physics and Astronomy club
+ANCC: Algorithms and competitive coding club (Incredibly smart people here)
+DevClub: Association of Frontend,backend,Appdev,Cybersecurity engineers
+Economics club:Economics club
+Business and Consulting club:Business and consulting club
+"Robotics": Robotics club
+"ARIES": AI/ML society of IIT Delhi
+"Infinity hyperloop": work on building a working prototype hyperloop
+"IGTS": Game theory society,
+"iGEM":Biotech/ Bioinformatics related club,
+"BlocSoc": Crypto/blockchain enthusiasts,
+"PFC": Photography and Films club,
+"Music Club": Musics club,
+"FACC":Painting,designing stuff and designing fashion(creative people here),
+"Debsoc":Debate society,
+"Lit club":Literary club (discuss books,word games),
+"QC": Quizzing club,
+"Design club":Do pretty stuff like UI/UX design,photo editing,graphics, VFX ,
+"Dance club":they dance
+"Drama club":Drama club,
+"Spic Macay":Classical dance,
+""";
+    return await getLLMReply(promptu);
   }
 
   Future<void> _submitSurvey() async {
@@ -274,7 +341,15 @@ class _SurveyViewState extends State<SurveyView> {
           isError: true);
       return;
     }
-
+    String descip = await _generateProfileDescription(
+        _nameController.text,
+        _gender!,
+        _selectedClubs,
+        _selectedSports,
+        _selectedMovieGenres,
+        _selectedMusicGenres,
+        _hangoutSpot!,
+        _relationshipType!);
     // ✅ Prepare Survey Data
     final surveyData = {
       "name": _nameController.text,
@@ -292,7 +367,8 @@ class _SurveyViewState extends State<SurveyView> {
       "timestamp": FieldValue.serverTimestamp(),
       "userId": user.uid,
       "number": _phonenumbercontroller.text,
-      "rightswipedby": ["peejayy"]
+      "rightswipedby": ["peejayy"],
+      "description": descip
     };
 
     try {
@@ -539,6 +615,7 @@ class _SurveyViewState extends State<SurveyView> {
       "Table tennis",
       "Atheltics",
       "Volleyball",
+      "Cricket",
       "Basketabll",
       "Chess",
       "Weightlifting",
@@ -578,7 +655,7 @@ class _SurveyViewState extends State<SurveyView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Select Your Sports",
+            "What sports do you play?",
             style: TextStyle(
               color: Colors.white,
               fontSize: 24,
@@ -598,7 +675,7 @@ class _SurveyViewState extends State<SurveyView> {
 
           const SizedBox(height: 20),
           const Text(
-            "Choose from the options below:",
+            "What clubs are you mostly into?",
             style: TextStyle(color: Colors.white70, fontSize: 16),
           ),
           const SizedBox(height: 10),
@@ -621,7 +698,7 @@ class _SurveyViewState extends State<SurveyView> {
 
           const SizedBox(height: 30),
           const Text(
-            "Select Your Clubs",
+            "What clubs are you mostly into?",
             style: TextStyle(
               color: Colors.white,
               fontSize: 24,
@@ -768,18 +845,17 @@ class _SurveyViewState extends State<SurveyView> {
     ];
 
     final List<String> musicGenres = [
-      "Rock",
       "Pop",
-      "Hip-Hop",
-      "Jazz",
-      "Classical",
-      "Electronic",
-      "Blues",
-      "Reggae",
-      "Country",
+      "K-Pop",
+      "Hip-hop",
+      "Rap",
       "Metal",
-      "Folk",
-      "RnB"
+      "Indie Pop",
+      "Bollywood",
+      "Punjabi",
+      "Classical",
+      "Southern cinema music",
+      "Rock",
     ];
 
     return Padding(
@@ -788,7 +864,7 @@ class _SurveyViewState extends State<SurveyView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Select Your Movie Genres",
+            "What kind of movies do you prefer watching?",
             style: TextStyle(
               color: Colors.white,
               fontSize: 24,
@@ -831,7 +907,7 @@ class _SurveyViewState extends State<SurveyView> {
 
           const SizedBox(height: 30),
           const Text(
-            "Select Your Music Genres",
+            "What kind of music do you generally listen to?",
             style: TextStyle(
               color: Colors.white,
               fontSize: 24,

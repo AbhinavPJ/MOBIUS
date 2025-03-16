@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_application_2/views/achievementsview.dart';
 import 'package:flutter_application_2/views/animatedmatch.dart';
 import 'package:flutter_application_2/views/profileview.dart';
 import 'package:groq/groq.dart';
@@ -36,6 +37,7 @@ class MatchmakingProfile {
   final String hostel;
   final String number;
   final List<String>? rightswipedby;
+  final String description;
   MatchmakingProfile(
       {required this.userId,
       required this.name,
@@ -54,7 +56,8 @@ class MatchmakingProfile {
       required this.tagline,
       required this.hostel,
       required this.number,
-      this.rightswipedby});
+      required this.rightswipedby,
+      required this.description});
 
   factory MatchmakingProfile.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
@@ -76,7 +79,8 @@ class MatchmakingProfile {
         tagline: data['tagline'] ?? '',
         hostel: data['hostel'] ?? '',
         number: data['number'] ?? '',
-        rightswipedby: List<String>.from(data['rightswipedby']));
+        rightswipedby: List<String>.from(data['rightswipedby']),
+        description: data['description'] ?? '');
   }
 }
 
@@ -644,17 +648,30 @@ Business and Consulting club:Business and consulting club
     // First, check if this is the last profile
     bool isLastProfile = currentMatchIndex + 1 >= potentialMatches.length;
 
-    // If it's the last profile, we'll handle it differently at the end of animation
-    _prepareForNextAnimation(accepted, isLastProfile);
-    _swipeController.forward();
+    // If it's the last profile and the user accepted, handle the match first
+    if (isLastProfile && accepted && currentUserProfile != null) {
+      // Store the current match before animation
+      final currentMatch = potentialMatches[currentMatchIndex];
+
+      // Process the match logic first
+      AClogic(currentUserProfile!, currentMatch).then((isMatch) {
+        // If it's a match, we'll let the match popup handle navigation
+        // Otherwise, continue with normal flow to final page
+        if (!isMatch && mounted) {
+          _prepareForNextAnimation(accepted, isLastProfile);
+          _swipeController.forward();
+        }
+      });
+    } else {
+      // For non-last profiles or rejections, continue as before
+      _prepareForNextAnimation(accepted, isLastProfile);
+      _swipeController.forward();
+    }
 
     // Make sure card is showing front side for the next profile
     if (!_isFrontVisible) {
       _flipCard();
     }
-
-    // Don't increment match index or load next profile yet
-    // This will happen in _finishSwipeTransition
   }
 
 // Helper method to reset and prepare for next animation
@@ -691,7 +708,12 @@ Business and Consulting club:Business and consulting club
 
     // Check if this was the last profile
     if (_isLastProfile) {
-      _makefinalmpage();
+      // Add a delay before showing the final page to allow the match popup to be visible
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        if (mounted) {
+          _makefinalmpage();
+        }
+      });
       return;
     }
 
@@ -743,10 +765,14 @@ Business and Consulting club:Business and consulting club
           'timestamp': FieldValue.serverTimestamp(),
           'matchScore': _calculateMatchScore(match),
         });
-        _showMatchPopup(currentUser, match);
+
+        // Show match popup before potentially redirecting
+        if (mounted) {
+          _showMatchPopup(currentUser, match);
+        }
+
         _sendMatchNotification(currentUser, match);
         return true;
-        // Check if the widget is still mounted before showing the popup
       }
       return false;
     } catch (e) {
@@ -772,17 +798,28 @@ Business and Consulting club:Business and consulting club
   AppBar _buildAppBar(BuildContext context) {
     return AppBar(
       title: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: IconButton(
+              icon: Icon(
+                Icons.emoji_events,
+                color: Colors.white,
+                size: 35,
+              ),
+              onPressed: () => _showAchievemnts(context),
+              tooltip: 'View Profile',
+            ),
+          ),
+          const SizedBox(width: 40),
           Image.asset(
             'assets/images/logo.png',
             height: 40,
           ),
-          const SizedBox(width: 10),
           const Text(
             "MOBIUS",
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 28,
               fontWeight: FontWeight.bold,
               color: Color.fromARGB(255, 179, 255, 1),
             ),
@@ -798,7 +835,7 @@ Business and Consulting club:Business and consulting club
             icon: Icon(
               Icons.account_circle,
               color: Colors.white,
-              size: 30,
+              size: 35,
             ),
             onPressed: () => _showProfileDialog(context),
             tooltip: 'View Profile',
@@ -818,6 +855,23 @@ Business and Consulting club:Business and consulting club
         ),
       ),
       elevation: 0,
+    );
+  }
+
+  void _showAchievemnts(BuildContext context) {
+    if (currentUserProfile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Profile is still loading. Please try again.')),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AchievementsView(profile: currentUserProfile!),
+      ),
     );
   }
 
@@ -847,33 +901,41 @@ Business and Consulting club:Business and consulting club
   void _showMatchPopup(
       MatchmakingProfile currentUser, MatchmakingProfile match) {
     if (!mounted) return;
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            MatchAnimationView(
-          currentUser: currentUser,
-          match: match,
-        ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(0.0, 1.0);
-          const end = Offset.zero;
-          const curve = Curves.easeOutCubic;
+    print("Showing match popup");
 
-          var tween =
-              Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-          var offsetAnimation = animation.drive(tween);
-
-          return SlideTransition(
-            position: offsetAnimation,
-            child: FadeTransition(
-              opacity: animation,
-              child: child,
+    // Use a Future.microtask to ensure this runs after the current build cycle
+    Future.microtask(() {
+      if (mounted) {
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                MatchAnimationView(
+              currentUser: currentUser,
+              match: match,
             ),
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 500),
-      ),
-    );
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              const begin = Offset(0.0, 1.0);
+              const end = Offset.zero;
+              const curve = Curves.easeOutCubic;
+
+              var tween =
+                  Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+              var offsetAnimation = animation.drive(tween);
+
+              return SlideTransition(
+                position: offsetAnimation,
+                child: FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 500),
+          ),
+        );
+      }
+    });
   }
 
   // Update the build method to use mounted check instead of _isDisposed
@@ -881,45 +943,57 @@ Business and Consulting club:Business and consulting club
   Widget build(BuildContext context) {
     if (potentialMatches.isEmpty) {
       return Scaffold(
-        backgroundColor: Colors.brown[50],
-        appBar: AppBar(
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
-                'assets/images/logo.png',
-                height: 40,
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                "MOBIUS",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          centerTitle: true,
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFFE53935),
-                  Color(0xFFFFC107),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+        appBar: _buildAppBar(context),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color.fromARGB(255, 0, 0, 0),
+                Color.fromARGB(255, 0, 0, 0)
+              ],
             ),
           ),
-          elevation: 0,
-        ),
-        body: Center(
-          child: Text(
-            "No matches found.",
-            style: TextStyle(color: Colors.black),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.sentiment_dissatisfied,
+                      size: 48,
+                      color: Colors.redAccent,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "Oh no!",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "We couldn't find any matches for you.\nTry your luck again later!",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       );
@@ -1145,6 +1219,10 @@ Business and Consulting club:Business and consulting club
           height: 660,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.yellow,
+              width: 6,
+            ),
             color: Color.fromARGB(255, 46, 49, 73),
           ),
           child: Column(

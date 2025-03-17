@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_2/views/achievementsview.dart';
 import 'package:flutter_application_2/views/animatedmatch.dart';
+import 'package:flutter_application_2/views/mymatchesview.dart';
 import 'package:flutter_application_2/views/profileview.dart';
 import 'package:groq/groq.dart';
 import 'dart:math' as math;
@@ -101,6 +102,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
   late Animation<double> _fadeAnimation;
 
   final _random = math.Random();
+  bool _isMatchPopupShown = false; // Add this to your class
   bool _isAnimating = false; // Track if the card was accepted or rejected
   bool _isFrontVisible = true;
   bool _isLastProfile = false; // Add this to your state variables
@@ -566,53 +568,6 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     }
   }
 
-  Future<String> _generateProfileDescription(
-      MatchmakingProfile currentMatch) async {
-    String promptu = """
-Generate a short,sweet,insightful,fun,quirky,positive description of a person based on the following characteristics.The goal is to create a relationship
- between the person described and the person reading this.
- Try to infer from the fields below what a person might actually be like in person:
-
-Name: ${currentMatch.name}
-Gender: ${currentMatch.gender}
-
-Interests:
-- Clubs: ${currentMatch.clubs.join(', ')}
-- Sports: ${currentMatch.sports.join(', ')}
-- Movie Genres: ${currentMatch.movieGenres.join(', ')}
-- Music Genres: ${currentMatch.musicGenres.join(', ')}
-- Hangout Spot: ${currentMatch.hangoutSpot}
-- Relationship Type: ${currentMatch.relationshipType}
-
-here is what each club means:
-
-Aeromodelling: Design,Construction,Flying of model aircraft by applying aerodynamic analysis
-AXLR8R: Engineers create a superfast open-wheel formula-one style electric car within a year
-PAC: Physics and Astronomy club
-ANCC: Algorithms and competitive coding club (Incredibly smart people here)
-DevClub: Association of Frontend,backend,Appdev,Cybersecurity engineers
-Economics club:Economics club
-Business and Consulting club:Business and consulting club
-"Robotics": Robotics club
-"ARIES": AI/ML society of IIT Delhi
-"Infinity hyperloop": work on building a working prototype hyperloop
-"IGTS": Game theory society,
-"iGEM":Biotech/ Bioinformatics related club,
-"BlocSoc": Crypto/blockchain enthusiasts,
-"PFC": Photography and Films club,
-"Music Club": Musics club,
-"FACC":Painting,designing stuff and designing fashion(creative people here),
-"Debsoc":Debate society,
-"Lit club":Literary club (discuss books,word games),
-"QC": Quizzing club,
-"Design club":Do pretty stuff like UI/UX design,photo editing,graphics, VFX ,
-"Dance club":they dance
-"Drama club":Drama club,
-"Spic Macay":Classical dance,
-""";
-    return await getLLMReply(promptu);
-  }
-
   Future<void> _loadProfileDescription(MatchmakingProfile profile) async {
     if (!mounted) return;
 
@@ -622,7 +577,7 @@ Business and Consulting club:Business and consulting club
     });
 
     try {
-      String description = await _generateProfileDescription(profile);
+      String description = profile.description;
 
       if (mounted) {
         setState(() {
@@ -768,9 +723,9 @@ Business and Consulting club:Business and consulting club
 
         // Show match popup before potentially redirecting
         if (mounted) {
+          _moveToNextMatch(accepted: false);
           _showMatchPopup(currentUser, match);
         }
-
         _sendMatchNotification(currentUser, match);
         return true;
       }
@@ -812,9 +767,20 @@ Business and Consulting club:Business and consulting club
             ),
           ),
           const SizedBox(width: 40),
-          Image.asset(
-            'assets/images/logo.png',
-            height: 40,
+          // Change logo to be a button
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MyMatchesView(),
+                ),
+              );
+            },
+            child: Image.asset(
+              'assets/images/logo.png',
+              height: 40,
+            ),
           ),
           const Text(
             "MOBIUS",
@@ -900,40 +866,38 @@ Business and Consulting club:Business and consulting club
   // Updated _showMatchPopup to use the current context
   void _showMatchPopup(
       MatchmakingProfile currentUser, MatchmakingProfile match) {
-    if (!mounted) return;
+    if (!mounted || _isMatchPopupShown) return;
+    _isMatchPopupShown = true; // Prevent duplicate popups
     print("Showing match popup");
 
-    // Use a Future.microtask to ensure this runs after the current build cycle
     Future.microtask(() {
       if (mounted) {
-        Navigator.of(context).push(
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                MatchAnimationView(
-              currentUser: currentUser,
-              match: match,
-            ),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-              const begin = Offset(0.0, 1.0);
-              const end = Offset.zero;
-              const curve = Curves.easeOutCubic;
+        Navigator.of(context)
+            .push(
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    MatchAnimationView(currentUser: currentUser, match: match),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                  const begin = Offset(0.0, 1.0);
+                  const end = Offset.zero;
+                  const curve = Curves.easeOutCubic;
+                  var tween = Tween(begin: begin, end: end)
+                      .chain(CurveTween(curve: curve));
+                  var offsetAnimation = animation.drive(tween);
 
-              var tween =
-                  Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-              var offsetAnimation = animation.drive(tween);
-
-              return SlideTransition(
-                position: offsetAnimation,
-                child: FadeTransition(
-                  opacity: animation,
-                  child: child,
-                ),
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 500),
-          ),
-        );
+                  return SlideTransition(
+                    position: offsetAnimation,
+                    child: FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    ),
+                  );
+                },
+                transitionDuration: const Duration(milliseconds: 500),
+              ),
+            )
+            .then((_) => _isMatchPopupShown = false); // Reset flag when closed
       }
     });
   }

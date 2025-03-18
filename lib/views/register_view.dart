@@ -91,28 +91,32 @@ class _RegisterViewState extends State<RegisterView> {
 
             Expanded(
               flex: 3,
-              child: Column(
-                children: [
-                  _buildTextField(_email, "Enter email", false),
-                  const SizedBox(height: 20), // Increased spacing
-                  _buildTextField(_password, "Enter password", true),
-                  const SizedBox(height: 30), // Increased spacing
-                  _buildButton(
-                      "Register", Colors.white, Colors.black, _registerUser),
-                  const SizedBox(height: 20), // Increased spacing
-                  TextButton(
-                    onPressed: () => Navigator.pushNamed(context, '/login'),
-                    child: const Text(
-                      "Already Registered? Login Here",
-                      style: TextStyle(
-                        color: Color.fromARGB(255, 179, 255, 80),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                child: Column(
+                  children: [
+                    _buildTextField(_email, "Enter email", false),
+                    const SizedBox(height: 20), // Increased spacing
+                    _buildTextField(_password, "Enter password", true),
+                    const SizedBox(height: 30), // Increased spacing
+                    _buildButton(
+                        "Register", Colors.white, Colors.black, _registerUser),
+                    const SizedBox(height: 20), // Increased spacing
+                    TextButton(
+                      onPressed: () => Navigator.pushNamed(context, '/login'),
+                      child: const Text(
+                        "Already Registered? Login Here",
+                        style: TextStyle(
+                          color: Color.fromARGB(255, 179, 255, 80),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -142,7 +146,8 @@ class _RegisterViewState extends State<RegisterView> {
         password: password,
       );
 
-      final uid = userCredential.user!.uid;
+      final user = userCredential.user!;
+      final uid = user.uid;
 
       await FirebaseFirestore.instance.collection("users").doc(uid).set({
         "uid": uid,
@@ -150,12 +155,38 @@ class _RegisterViewState extends State<RegisterView> {
         "created_at": FieldValue.serverTimestamp(),
       });
 
-      await userCredential.user?.sendEmailVerification();
+      if (!user.emailVerified) {
+        Future.delayed(const Duration(seconds: 2), () async {
+          await _sendVerificationEmail(user);
+        });
+      }
+
       print("User Registered & Data Saved Successfully!");
+
+      // Ensure navigation happens immediately after registration
       Navigator.of(context)
           .pushNamedAndRemoveUntil('/verify', (route) => false);
     } on FirebaseAuthException catch (e) {
       _showError(e.code);
+    }
+  }
+
+  Future<void> _sendVerificationEmail(User user) async {
+    try {
+      // Check if user is still not verified
+      await user.reload();
+      if (user.emailVerified) {
+        return; // No need to send another verification email
+      }
+
+      await user.sendEmailVerification();
+      print("Verification email sent successfully.");
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'too-many-requests') {
+        _showError("Too many requests. Try again later.");
+      } else {
+        _showError("Error sending verification email: ${e.message}");
+      }
     }
   }
 
@@ -173,6 +204,8 @@ class _RegisterViewState extends State<RegisterView> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30),
       child: TextField(
+        enableSuggestions: false,
+        autocorrect: false,
         controller: controller,
         obscureText: isPassword,
         style: const TextStyle(color: Colors.white),

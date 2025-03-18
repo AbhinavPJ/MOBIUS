@@ -8,11 +8,15 @@ import 'package:url_launcher/url_launcher.dart';
 class MatchAnimationView extends StatefulWidget {
   final MatchmakingProfile currentUser;
   final MatchmakingProfile match;
+  final bool flag1;
+  final bool flag2;
 
   const MatchAnimationView({
     Key? key,
     required this.currentUser,
     required this.match,
+    required this.flag1,
+    required this.flag2,
   }) : super(key: key);
 
   @override
@@ -34,7 +38,6 @@ class _MatchAnimationViewState extends State<MatchAnimationView>
   @override
   void initState() {
     super.initState();
-    print("fuck bro");
     // Initialize confetti controller
     _confettiController =
         ConfettiController(duration: const Duration(seconds: 5));
@@ -113,6 +116,7 @@ class _MatchAnimationViewState extends State<MatchAnimationView>
     if (await canLaunchUrl(whatsappUri)) {
       await launchUrl(whatsappUri);
     } else {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Could not launch WhatsApp')));
     }
@@ -272,13 +276,16 @@ class _MatchAnimationViewState extends State<MatchAnimationView>
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               elevation: 5,
+                              // ignore: deprecated_member_use
                               shadowColor: Colors.black.withOpacity(0.5),
                             ),
                           ),
                           const SizedBox(height: 20),
                           TextButton(
                             onPressed: () {
-                              Navigator.of(context).pop();
+                              print("oogaaa");
+                              print(widget.flag1);
+                              Navigator.of(context).pop(false);
                             },
                             child: const Text(
                               "Continue Browsing",
@@ -310,6 +317,7 @@ class _MatchAnimationViewState extends State<MatchAnimationView>
         border: Border.all(color: Colors.white, width: 4),
         boxShadow: [
           BoxShadow(
+            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.2),
             spreadRadius: 2,
             blurRadius: 10,

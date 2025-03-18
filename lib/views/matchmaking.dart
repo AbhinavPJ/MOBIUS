@@ -1,3 +1,5 @@
+// ignore_for_file: use_key_in_widget_constructors, library_private_types_in_public_api
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -39,6 +41,7 @@ class MatchmakingProfile {
   final String number;
   final List<String>? rightswipedby;
   final String description;
+  final List<String>? Heleftwiped;
   MatchmakingProfile(
       {required this.userId,
       required this.name,
@@ -58,7 +61,8 @@ class MatchmakingProfile {
       required this.hostel,
       required this.number,
       required this.rightswipedby,
-      required this.description});
+      required this.description,
+      this.Heleftwiped});
 
   factory MatchmakingProfile.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
@@ -81,7 +85,8 @@ class MatchmakingProfile {
         hostel: data['hostel'] ?? '',
         number: data['number'] ?? '',
         rightswipedby: List<String>.from(data['rightswipedby']),
-        description: data['description'] ?? '');
+        description: data['description'] ?? '',
+        Heleftwiped: List<String>.from(data['heleftswiped'] ?? []));
   }
 }
 
@@ -199,7 +204,10 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     if (currentUserProfile == null) {
       return 0.0;
     }
-
+    print(currentUserProfile!.name);
+    if ((profile.name) == "peeeejaaayyy") {
+      return -200.0;
+    }
     double score = 0.0;
     var n1 = 0.01;
     var n2 = 20.0;
@@ -427,78 +435,6 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
         (list1.length.toDouble() + list2.length.toDouble() - intersects);
   }
 
-  void _makefinalmpage() {
-    if (!mounted) return;
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: _buildAppBar(context),
-          body: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color.fromRGBO(1, 111, 162, 0.82),
-                  Color.fromRGBO(15, 172, 36, 0.653),
-                ],
-              ),
-            ),
-            child: Center(
-              child: Container(
-                width: 320,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 10,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                  border: Border.all(color: Color(0xFFFFD700), width: 5),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Image.asset(
-                      'assets/images/logo.png',
-                      height: 100,
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      "That's all for today!",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepOrange,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 15),
-                    Text(
-                      "You've seen all potential matches for now. Check back tomorrow for new matches!",
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black87,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 25),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _fetchUserProfiles() async {
     try {
       print("Fetching user profile...");
@@ -611,8 +547,8 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       // Process the match logic first
       AClogic(currentUserProfile!, currentMatch).then((isMatch) {
         // If it's a match, we'll let the match popup handle navigation
-        // Otherwise, continue with normal flow to final page
-        if (!isMatch && mounted) {
+        if (mounted) {
+          // Only go to final page if it's not a match
           _prepareForNextAnimation(accepted, isLastProfile);
           _swipeController.forward();
         }
@@ -662,15 +598,6 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     if (!mounted) return;
 
     // Check if this was the last profile
-    if (_isLastProfile) {
-      // Add a delay before showing the final page to allow the match popup to be visible
-      Future.delayed(const Duration(milliseconds: 2000), () {
-        if (mounted) {
-          _makefinalmpage();
-        }
-      });
-      return;
-    }
 
     setState(() {
       _isAnimating = false;
@@ -723,8 +650,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
 
         // Show match popup before potentially redirecting
         if (mounted) {
-          _moveToNextMatch(accepted: false);
-          _showMatchPopup(currentUser, match);
+          _showMatchPopup(currentUser, match, _isLastProfile);
         }
         _sendMatchNotification(currentUser, match);
         return true;
@@ -863,9 +789,8 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     );
   }
 
-  // Updated _showMatchPopup to use the current context
   void _showMatchPopup(
-      MatchmakingProfile currentUser, MatchmakingProfile match) {
+      MatchmakingProfile currentUser, MatchmakingProfile match, bool flag) {
     if (!mounted || _isMatchPopupShown) return;
     _isMatchPopupShown = true; // Prevent duplicate popups
     print("Showing match popup");
@@ -874,30 +799,37 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       if (mounted) {
         Navigator.of(context)
             .push(
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) =>
-                    MatchAnimationView(currentUser: currentUser, match: match),
-                transitionsBuilder:
-                    (context, animation, secondaryAnimation, child) {
-                  const begin = Offset(0.0, 1.0);
-                  const end = Offset.zero;
-                  const curve = Curves.easeOutCubic;
-                  var tween = Tween(begin: begin, end: end)
-                      .chain(CurveTween(curve: curve));
-                  var offsetAnimation = animation.drive(tween);
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                MatchAnimationView(
+                    currentUser: currentUser,
+                    match: match,
+                    flag1: (currentMatchIndex == (potentialMatches.length - 1)),
+                    flag2: (currentMatchIndex == (potentialMatches.length))),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              const begin = Offset(0.0, 1.0);
+              const end = Offset.zero;
+              const curve = Curves.easeOutCubic;
+              var tween =
+                  Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+              var offsetAnimation = animation.drive(tween);
 
-                  return SlideTransition(
-                    position: offsetAnimation,
-                    child: FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    ),
-                  );
-                },
-                transitionDuration: const Duration(milliseconds: 500),
-              ),
-            )
-            .then((_) => _isMatchPopupShown = false); // Reset flag when closed
+              return SlideTransition(
+                position: offsetAnimation,
+                child: FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 500),
+          ),
+        )
+            .then((_) {
+          _isMatchPopupShown = false; // Reset flag when closed
+          // Do NOT redirect to final page here - let the normal flow continue
+        });
       }
     });
   }
@@ -1172,6 +1104,67 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
   // Update the _buildFrontCard method to use the modified AClogic without context
   Widget _buildFrontCard(MatchmakingProfile currentMatch, double matchScore) {
     String beta = (matchScore % 100).toStringAsFixed(2);
+    if (currentMatch.name == "peeeejaaayyy") {
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Background Card with Same Shape and Styling
+          Container(
+            width: 390,
+            height: 660,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.yellow,
+                width: 6,
+              ),
+              color: const Color.fromARGB(255, 46, 49, 73),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                const SizedBox(height: 240),
+                Text(
+                  "That's all for today!",
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.deepOrange,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  "You've seen all potential matches for now. Check back tomorrow for new matches!",
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 25),
+              ],
+            ),
+          ),
+          // Profile Image Positioned Above Card
+          Positioned(
+            top: 40,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 180,
+                  height: 180,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -1317,7 +1310,18 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
                       ClipPath(
                         clipper: CustomShapeClipper(),
                         child: ElevatedButton(
-                          onPressed: () => _moveToNextMatch(accepted: false),
+                          onPressed: () async {
+                            DocumentReference matchRef = FirebaseFirestore
+                                .instance
+                                .collection('surveys')
+                                .doc(currentUserProfile!.userId);
+
+                            await matchRef.update({
+                              'Heleftwiped':
+                                  FieldValue.arrayUnion([currentMatch.userId])
+                            });
+                            _moveToNextMatch(accepted: false);
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             padding: const EdgeInsets.symmetric(
@@ -1343,6 +1347,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
                             if (currentUserProfile != null) {
                               AClogic(currentUserProfile!, currentMatch);
                               _moveToNextMatch(accepted: true);
+                              print(_isLastProfile);
                             }
                           },
                           style: ElevatedButton.styleFrom(

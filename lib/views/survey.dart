@@ -616,7 +616,7 @@ Business and Consulting club:Business and consulting club
       "Atheltics",
       "Volleyball",
       "Cricket",
-      "Basketabll",
+      "Basketball",
       "Chess",
       "Weightlifting",
       "Competitive programming",

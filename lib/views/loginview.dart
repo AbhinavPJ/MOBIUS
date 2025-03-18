@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -89,28 +91,33 @@ class _LoginViewState extends State<LoginView> {
             const SizedBox(height: 40),
             Expanded(
               flex: 3,
-              child: Column(
-                children: [
-                  _buildTextField(_email, "Enter email", false),
-                  const SizedBox(height: 20),
-                  _buildTextField(_password, "Enter password", true),
-                  const SizedBox(height: 30),
-                  _buildButton("Login", Colors.white, Colors.black, _loginUser),
-                  const SizedBox(height: 20),
-                  TextButton(
-                    onPressed: () => Navigator.pushNamed(context, '/register'),
-                    child: const Text(
-                      "Not Registered? Register Here",
-                      style: TextStyle(
-                        color: Color.fromARGB(255, 179, 255, 80),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
+              child: SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  child: Column(
+                    children: [
+                      _buildTextField(_email, "Enter email", false),
+                      const SizedBox(height: 20),
+                      _buildTextField(_password, "Enter password", true),
+                      const SizedBox(height: 30),
+                      _buildButton(
+                          "Login", Colors.white, Colors.black, _loginUser),
+                      const SizedBox(height: 20),
+                      TextButton(
+                        onPressed: () =>
+                            Navigator.pushNamed(context, '/register'),
+                        child: const Text(
+                          "Not Registered? Register Here",
+                          style: TextStyle(
+                            color: Color.fromARGB(255, 179, 255, 80),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
+                    ],
+                  )),
             ),
           ],
         ),
@@ -191,6 +198,8 @@ class _LoginViewState extends State<LoginView> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30),
       child: TextField(
+        enableSuggestions: false,
+        autocorrect: false,
         controller: controller,
         obscureText: isPassword,
         style: const TextStyle(color: Colors.white),

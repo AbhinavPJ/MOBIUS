@@ -42,13 +42,10 @@ class _MyMatchesViewState extends State<MyMatchesView> {
         });
         return;
       }
-
-      // Create a MatchmakingProfile from the current user's document
       MatchmakingProfile currentUserProfile =
           MatchmakingProfile.fromFirestore(currentUserDoc);
       List<String> myRightSwipes = currentUserProfile.rightswipedby ?? [];
 
-      // Fetch all users who have the current user in their rightswipedby list
       QuerySnapshot potentialMatches = await FirebaseFirestore.instance
           .collection('surveys')
           .where('rightswipedby', arrayContains: _currentUserId)
@@ -56,24 +53,16 @@ class _MyMatchesViewState extends State<MyMatchesView> {
 
       List<MatchData> loadedMatches = [];
 
-      // Loop through potential matches and check if current user has also right-swiped them
       for (var doc in potentialMatches.docs) {
         String otherUserId = doc.id;
 
-        // Skip if this is the current user's document
         if (otherUserId == _currentUserId) continue;
 
-        // Check if current user has also right-swiped this user
         if (myRightSwipes.contains(otherUserId)) {
-          // This is a mutual match - create a MatchmakingProfile
           MatchmakingProfile otherUserProfile =
               MatchmakingProfile.fromFirestore(doc);
-
-          // Get match score from external function (provided by you)
-          // Note: You'll need to import the file containing this function
           double matchScore =
               _calculateMatchScore(currentUserProfile, otherUserProfile);
-
           loadedMatches.add(
             MatchData(
               matchId:
@@ -90,7 +79,6 @@ class _MyMatchesViewState extends State<MyMatchesView> {
         }
       }
 
-      // Sort matches by score (descending)
       loadedMatches.sort((a, b) => b.matchScore.compareTo(a.matchScore));
 
       setState(() {
@@ -630,7 +618,6 @@ class _MyMatchesViewState extends State<MyMatchesView> {
 
   void _viewFullProfile(MatchData match) async {
     try {
-      // Fetch the full profile
       DocumentSnapshot profileDoc = await FirebaseFirestore.instance
           .collection('surveys')
           .doc(match.userId)
@@ -638,11 +625,9 @@ class _MyMatchesViewState extends State<MyMatchesView> {
 
       if (!profileDoc.exists || !mounted) return;
 
-      // Convert to MatchmakingProfile
       MatchmakingProfile fullProfile =
           MatchmakingProfile.fromFirestore(profileDoc);
 
-      // Navigate to profile view
       Navigator.push(
         context,
         MaterialPageRoute(

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_2/views/matchmaking.dart';
 
@@ -10,6 +11,7 @@ class Achievement1 {
   final int benchmark1;
   final int benchmark2;
   final int benchmark3;
+
   Achievement1({
     required this.name,
     required this.description,
@@ -23,35 +25,41 @@ class Achievement1 {
   bool get isComplete => currentProgress >= totalRequired;
 }
 
-// Function to create a new achievement
-Achievement1 makeAchievement1({
-  required String name,
-  required String description,
-  required int currentProgress,
-  required int totalRequired,
-  required int benchmark1,
-  required int benchmark2,
-  required int benchmark3,
-}) {
-  return Achievement1(
-    name: name,
-    description: description,
-    currentProgress: currentProgress,
-    totalRequired: totalRequired,
-    benchmark1: benchmark1,
-    benchmark2: benchmark2,
-    benchmark3: benchmark3,
-  );
-}
-
 class AchievementsView extends StatelessWidget {
   final MatchmakingProfile profile;
+
   const AchievementsView({Key? key, required this.profile}) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    final achievements = [
-      makeAchievement1(
+  Future<List<Achievement1>> _fetchAchievements() async {
+    int numberofleftswipes = profile.Heleftwiped?.length ?? 0;
+
+    DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
+        .collection('surveys')
+        .doc(profile.userId)
+        .get();
+
+    MatchmakingProfile currentUserProfile =
+        MatchmakingProfile.fromFirestore(currentUserDoc);
+
+    List<String> myRightSwipes = currentUserProfile.rightswipedby ?? [];
+
+    QuerySnapshot potentialMatches = await FirebaseFirestore.instance
+        .collection('surveys')
+        .where('rightswipedby', arrayContains: profile.userId)
+        .get();
+
+    List<String> loadedMatches = [];
+
+    for (var doc in potentialMatches.docs) {
+      String otherUserId = doc.id;
+      if (otherUserId != profile.userId &&
+          myRightSwipes.contains(otherUserId)) {
+        loadedMatches.add(otherUserId);
+      }
+    }
+
+    return [
+      Achievement1(
         name: "The First Order of Business",
         description:
             "Complete the survey and prove your mastery over forms, checkboxes, and mildly invasive questions!",
@@ -61,54 +69,66 @@ class AchievementsView extends StatelessWidget {
         benchmark2: 1,
         benchmark3: 1,
       ),
-      makeAchievement1(
+      Achievement1(
         name: "Sigma Male",
         description: "Pass on profiles",
-        currentProgress: 7,
+        currentProgress: numberofleftswipes,
         totalRequired: 15,
         benchmark1: 5,
         benchmark2: 10,
         benchmark3: 15,
       ),
-      makeAchievement1(
+      Achievement1(
         name: "Play Boy",
         description: "Get many matches",
-        currentProgress: 7,
+        currentProgress: loadedMatches.length,
         totalRequired: 15,
         benchmark1: 5,
         benchmark2: 10,
         benchmark3: 15,
       ),
     ];
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Achievements'),
       ),
-      body: Container(
-        color: Colors.grey[200],
-        child: ListView.builder(
-          itemCount: achievements.length,
-          itemBuilder: (context, index) {
-            final achievement = achievements[index];
-            return _buildAchievementCard(achievement);
-          },
-        ),
+      body: FutureBuilder<List<Achievement1>>(
+        future: _fetchAchievements(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text('No achievements found.'));
+          }
+
+          final achievements = snapshot.data!;
+          return Container(
+            color: Colors.grey[200],
+            child: ListView.builder(
+              itemCount: achievements.length,
+              itemBuilder: (context, index) {
+                final achievement = achievements[index];
+                return _buildAchievementCard(achievement);
+              },
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildAchievementCard(Achievement1 achievement) {
-    var starsEarned = 0;
-    if (achievement.currentProgress >= achievement.benchmark1) {
-      starsEarned += 1;
-    }
-    if (achievement.currentProgress >= achievement.benchmark2) {
-      starsEarned += 1;
-    }
-    if (achievement.currentProgress >= achievement.benchmark2) {
-      starsEarned += 1;
-    }
+    int starsEarned = 0;
+    if (achievement.currentProgress >= achievement.benchmark1) starsEarned += 1;
+    if (achievement.currentProgress >= achievement.benchmark2) starsEarned += 1;
+    if (achievement.currentProgress >= achievement.benchmark3) starsEarned += 1;
+
     return Card(
       margin: const EdgeInsets.all(8),
       child: Padding(
@@ -116,7 +136,6 @@ class AchievementsView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Stars row
             Row(
               children: List.generate(3, (index) {
                 return Icon(
@@ -126,34 +145,19 @@ class AchievementsView extends StatelessWidget {
                 );
               }),
             ),
-
             const SizedBox(height: 8),
-
-            // Title and description
             Text(
               achievement.name,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            Text(
-              achievement.description,
-              style: const TextStyle(fontSize: 14),
-            ),
-
+            Text(achievement.description, style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 12),
-
-            // Progress section
             if (!achievement.isComplete) ...[
-              // Progress text
               Text(
                 '${achievement.currentProgress}/${achievement.totalRequired}',
                 style: const TextStyle(fontSize: 12),
                 textAlign: TextAlign.right,
               ),
-
-              // Progress bar
               LinearProgressIndicator(
                 value: achievement.currentProgress / achievement.totalRequired,
                 minHeight: 10,

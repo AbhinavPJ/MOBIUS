@@ -144,13 +144,38 @@ class _vProfileViewState extends State<vProfileView> {
             top: 40,
             left: 0,
             right: 0,
-            child: Center(
+            child: Align(
+              alignment: Alignment.topCenter, // Ensures centering
               child: ClipOval(
-                child: Image.network(
-                  currentMatch.profilePicture,
-                  width: 180, // Same size as front
+                child: SizedBox(
+                  width: 180,
                   height: 180,
-                  fit: BoxFit.cover,
+                  child: Stack(
+                    alignment: Alignment.center, // Centers loading indicator
+                    children: [
+                      // Circular progress indicator while loading
+                      const CircularProgressIndicator(),
+                      // Image with loading handling
+                      Image.network(
+                        currentMatch.profilePicture,
+                        width: 180,
+                        height: 180,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null)
+                            return child; // Fully loaded
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        },
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(
+                          Icons.error,
+                          size: 180,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_2/auth/keys.dart';
 import 'package:flutter_application_2/views/matchmaking.dart';
+import 'package:groq/groq.dart';
 
 class ProfileView extends StatefulWidget {
   final MatchmakingProfile profile;
@@ -18,12 +20,14 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView> {
+  late Groq groq;
+  bool isApiReady = false;
   bool _isEditingHangout = false;
   bool _isEditingClubs = false;
   bool _isEditingMovieGenres = false;
   bool _isEditingMusicGenres = false;
   bool _isEditingSports = false;
-
+  String profilepictureurl = "";
   List<String> _selectedClubs = [];
   List<String> _selectedMovieGenres = [];
   List<String> _selectedMusicGenres = [];
@@ -106,10 +110,12 @@ class _ProfileViewState extends State<ProfileView> {
   @override
   void initState() {
     super.initState();
+    initializeGroq();
     _selectedClubs = List<String>.from(widget.profile.clubs);
     _selectedMovieGenres = List<String>.from(widget.profile.movieGenres);
     _selectedMusicGenres = List<String>.from(widget.profile.musicGenres);
     _selectedHangoutSpot = widget.profile.hangoutSpot;
+    profilepictureurl = widget.profile.profilePicture;
     _selectedSports = List<String>.from(widget.profile.sports);
   }
 
@@ -142,6 +148,17 @@ class _ProfileViewState extends State<ProfileView> {
     }
   }
 
+  Future<void> initializeGroq() async {
+    await Secrets.loadSecrets();
+    setState(() {
+      groq = Groq(
+        apiKey: Secrets.groqApiKey, // Load API key securely
+        model: "llama-3.3-70b-versatile",
+      );
+      isApiReady = true;
+    });
+  }
+
   Future<String> _generateProfileDescription(
       String name,
       String gender,
@@ -151,6 +168,10 @@ class _ProfileViewState extends State<ProfileView> {
       List<String> musicGenres,
       String hangoutSpot,
       String relationshipType) async {
+    if (!isApiReady) {
+      return "LLM is not ready yet.";
+    }
+
     String promptu = """
 Generate a short,sweet,insightful,fun,quirky,positive description of a person based on the following characteristics.The goal is to create a relationship
  between the person described and the person reading this.
@@ -193,7 +214,9 @@ Business and Consulting club:Business and consulting club
 "Drama club":Drama club,
 "Spic Macay":Classical dance,
 """;
-    return await getLLMReply(promptu);
+    groq.startChat();
+    GroqResponse response = await groq.sendMessage(promptu);
+    return response.choices.first.message.content;
   }
 
   @override
@@ -222,6 +245,58 @@ Business and Consulting club:Business and consulting club
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Centered profile image with loading indicator
+            Center(
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.grey[300], // Placeholder color
+                ),
+                child: ClipOval(
+                  child: profilepictureurl.isNotEmpty
+                      ? Image.network(
+                          profilepictureurl,
+                          width: 180,
+                          height: 180,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) {
+                              return child;
+                            }
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes !=
+                                        null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                                color: Colors.white,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(
+                              child: Icon(
+                                Icons.error_outline,
+                                size: 40,
+                                color: Colors.red,
+                              ),
+                            );
+                          },
+                        )
+                      : const Center(
+                          child: Icon(
+                            Icons.person,
+                            size: 80,
+                            color: Colors.white54,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
             _buildSingleSelectField(
               label: "Hangout Spot",
               isEditing: _isEditingHangout,
@@ -350,11 +425,11 @@ Business and Consulting club:Business and consulting club
         Row(
           children: [
             Text(label,
-                style: TextStyle(
+                style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                     color: Colors.white)),
-            Spacer(),
+            const Spacer(),
             IconButton(
               icon: Icon(isEditing ? Icons.check : Icons.edit,
                   color: Colors.blue),
@@ -365,7 +440,7 @@ Business and Consulting club:Business and consulting club
         isEditing
             ? DropdownButtonFormField<String>(
                 value: selectedValue,
-                decoration: InputDecoration(border: OutlineInputBorder()),
+                decoration: const InputDecoration(border: OutlineInputBorder()),
                 items: options.map((option) {
                   return DropdownMenuItem(value: option, child: Text(option));
                 }).toList(),
@@ -376,8 +451,8 @@ Business and Consulting club:Business and consulting club
                 },
               )
             : Text(selectedValue,
-                style: TextStyle(fontSize: 16, color: Colors.white)),
-        SizedBox(height: 16),
+                style: const TextStyle(fontSize: 16, color: Colors.white)),
+        const SizedBox(height: 16),
       ],
     );
   }

@@ -13,6 +13,10 @@
 .swiftpm/
 migrate_working_dir/
 
+# Ignore the secrets.json file
+secrets.json
+
+
 # IntelliJ related
 *.iml
 *.ipr

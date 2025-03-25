@@ -102,8 +102,7 @@ class WelcomeScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(30),
           ),
           elevation: isPrimary ? 3 : 1,
-          shadowColor:
-              isPrimary ? Colors.green.withOpacity(0.3) : Colors.transparent,
+          shadowColor: isPrimary ? Colors.green : Colors.transparent,
         ),
         onPressed: () {
           Navigator.pushNamed(context, route);

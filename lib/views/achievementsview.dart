@@ -31,8 +31,8 @@ class AchievementsView extends StatelessWidget {
   const AchievementsView({Key? key, required this.profile}) : super(key: key);
 
   Future<List<Achievement1>> _fetchAchievements() async {
-    int numberofleftswipes = profile.Heleftwiped?.length ?? 0;
-
+    print(profile.heleftwiped!);
+    int numberofleftswipes = profile.heleftwiped?.length ?? 0;
     DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
         .collection('surveys')
         .doc(profile.userId)
@@ -94,31 +94,53 @@ class AchievementsView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Achievements'),
+        backgroundColor: Colors.black,
+        elevation: 0,
+        title: const Text(
+          'Achievements',
+          style: TextStyle(color: Colors.white),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: FutureBuilder<List<Achievement1>>(
-        future: _fetchAchievements(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No achievements found.'));
-          }
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color.fromRGBO(0, 0, 0, 1),
+              Color.fromRGBO(10, 10, 10, 1),
+            ],
+          ),
+        ),
+        child: FutureBuilder<List<Achievement1>>(
+          future: _fetchAchievements(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const Center(
+                  child: Text('No achievements found.',
+                      style: TextStyle(color: Colors.white70)));
+            }
 
-          final achievements = snapshot.data!;
-          return Container(
-            color: Colors.grey[200],
-            child: ListView.builder(
+            final achievements = snapshot.data!;
+            return ListView.builder(
+              padding: const EdgeInsets.all(12),
               itemCount: achievements.length,
               itemBuilder: (context, index) {
-                final achievement = achievements[index];
-                return _buildAchievementCard(achievement);
+                return _buildAchievementCard(achievements[index]);
               },
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -130,7 +152,9 @@ class AchievementsView extends StatelessWidget {
     if (achievement.currentProgress >= achievement.benchmark3) starsEarned += 1;
 
     return Card(
-      margin: const EdgeInsets.all(8),
+      color: Colors.black87,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -148,20 +172,24 @@ class AchievementsView extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               achievement.name,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
             ),
-            Text(achievement.description, style: const TextStyle(fontSize: 14)),
+            Text(achievement.description,
+                style: const TextStyle(fontSize: 14, color: Colors.white70)),
             const SizedBox(height: 12),
             if (!achievement.isComplete) ...[
               Text(
                 '${achievement.currentProgress}/${achievement.totalRequired}',
-                style: const TextStyle(fontSize: 12),
-                textAlign: TextAlign.right,
+                style: const TextStyle(fontSize: 12, color: Colors.white70),
               ),
+              const SizedBox(height: 4),
               LinearProgressIndicator(
                 value: achievement.currentProgress / achievement.totalRequired,
                 minHeight: 10,
-                backgroundColor: Colors.grey[300],
+                backgroundColor: Colors.grey[800],
                 valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
               ),
             ] else ...[

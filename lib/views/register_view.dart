@@ -213,7 +213,7 @@ class _RegisterViewState extends State<RegisterView> {
           hintText: hintText,
           hintStyle: const TextStyle(color: Colors.white70),
           filled: true,
-          fillColor: Colors.white.withOpacity(0.2),
+          fillColor: Colors.white,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),
             borderSide: BorderSide.none,

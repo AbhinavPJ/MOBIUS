@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_2/auth/keys.dart';
 import 'package:groq/groq.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -15,6 +16,8 @@ class SurveyView extends StatefulWidget {
 }
 
 class _SurveyViewState extends State<SurveyView> {
+  late Groq groq;
+  bool isApiReady = false;
   // Image related variables
   File? _imageFile;
   Uint8List? _webImage;
@@ -83,6 +86,22 @@ class _SurveyViewState extends State<SurveyView> {
   final List<String> _genders = ["MALE", "FEMALE"];
 
   @override
+  void initState() {
+    super.initState();
+    initializeGroq();
+  }
+
+  Future<void> initializeGroq() async {
+    await Secrets.loadSecrets();
+    setState(() {
+      groq = Groq(
+        apiKey: Secrets.groqApiKey, // Load API key securely
+        model: "llama-3.3-70b-versatile",
+      );
+      isApiReady = true;
+    });
+  }
+
   void dispose() {
     // Dispose controllers when widget is removed
     _phonenumbercontroller.dispose();
@@ -207,15 +226,13 @@ class _SurveyViewState extends State<SurveyView> {
     }
   }
 
-  final groq = Groq(
-    apiKey: "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",
-    model: "llama-3.3-70b-versatile", // Optional: specify a model
-  );
-
   Future<String> getLLMReply(String prompt) async {
+    if (!isApiReady) {
+      return "LLM is not ready yet.";
+    }
     groq.startChat();
     GroqResponse response = await groq.sendMessage(prompt);
-    return (response.choices.first.message.content);
+    return response.choices.first.message.content;
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -1000,7 +1017,7 @@ Business and Consulting club:Business and consulting club
               borderRadius: BorderRadius.circular(75),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black,
                   blurRadius: 10,
                   spreadRadius: 2,
                 )
@@ -1132,7 +1149,7 @@ Business and Consulting club:Business and consulting club
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.white),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.2),
+        fillColor: Colors.white,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
@@ -1158,7 +1175,7 @@ Business and Consulting club:Business and consulting club
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(16),
           ),
           child: DropdownButtonHideUnderline(

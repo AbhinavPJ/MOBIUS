@@ -1,5 +1,4 @@
 import 'package:firebase_core/firebase_core.dart';
-//import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,17 +9,10 @@ import 'firebase_options.dart';
 import 'views/survey.dart';
 import 'views/loginview.dart';
 import 'views/matchmaking.dart';
-/*
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print("🔹 Background Notification: ${message.notification?.title}");
-}*/
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  // Initialize Firebase Messaging & Notifications
-  // await FirebaseApi().initNotifications();
 
   runApp(const MyApp());
 }
@@ -32,67 +24,183 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: AuthWrapper(),
+      home: const AuthWrapper(),
       routes: {
+        '/home': (context) => FutureBuilder<Map<String, double>>(
+              future: _fetchCoefficients(),
+              builder: (context, coefSnapshot) {
+                if (coefSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (coefSnapshot.hasData) {
+                  final coefficients = coefSnapshot.data!;
+                  return MatchmakingScreen(
+                    flag: false,
+                    n1: coefficients["n1"]!,
+                    n2: coefficients["n2"]!,
+                    n3: coefficients["n3"]!,
+                    n4: coefficients["n4"]!,
+                    n5: coefficients["n5"]!,
+                    n6: coefficients["n6"]!,
+                    n7: coefficients["n7"]!,
+                    n8: coefficients["n8"]!,
+                    n9: coefficients["n9"]!,
+                    n10: coefficients["n10"]!,
+                  );
+                }
+
+                return const Center(child: Text("Failed to load coefficients"));
+              },
+            ),
         '/login': (context) => const LoginView(),
         '/survey': (context) => const SurveyView(),
-        '/matchmaking': (context) => MatchmakingScreen(),
         '/register': (context) => const RegisterView(),
         '/verify': (context) => const VerifyEmailView(),
       },
     );
   }
-}
 
-/*class FirebaseApi {
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  // Static method to fetch coefficients
+  static Future<Map<String, double>> _fetchCoefficients() async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection("coefficients")
+          .doc("1")
+          .get();
 
-  Future<void> initNotifications() async {
-    // Step 3: Request Notification Permissions
-    NotificationSettings settings = await _firebaseMessaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+      Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print("✅ Notification permission granted.");
-    } else {
-      print("❌ Notification permission denied.");
-      return;
+      if (data == null) {
+        return _getDefaultCoefficients();
+      }
+
+      return {
+        "n1": _parseDoubleOrDefault(data["n1"], 0.01),
+        "n2": _parseDoubleOrDefault(data["n2"], 20.0),
+        "n3": _parseDoubleOrDefault(data["n3"], 20.0),
+        "n4": _parseDoubleOrDefault(data["n4"], 5.0),
+        "n5": _parseDoubleOrDefault(data["n5"], 10.0),
+        "n6": _parseDoubleOrDefault(data["n6"], 5.0),
+        "n7": _parseDoubleOrDefault(data["n7"], 15.0),
+        "n8": _parseDoubleOrDefault(data["n8"], 15.0),
+        "n9": _parseDoubleOrDefault(data["n9"], 15.0),
+        "n10": _parseDoubleOrDefault(data["n10"], 15.0),
+      };
+    } catch (e) {
+      print("Error fetching coefficients: $e");
+      return _getDefaultCoefficients();
+    }
+  }
+
+  // Helper method to get default coefficients
+  static Map<String, double> _getDefaultCoefficients() {
+    return {
+      "n1": 0.01,
+      "n2": 20.0,
+      "n3": 20.0,
+      "n4": 5.0,
+      "n5": 10.0,
+      "n6": 5.0,
+      "n7": 15.0,
+      "n8": 15.0,
+      "n9": 15.0,
+      "n10": 15.0,
+    };
+  }
+
+  // Helper method to parse values safely
+  static double _parseDoubleOrDefault(dynamic value, double defaultValue) {
+    if (value == null) return defaultValue;
+
+    if (value is num) return value.toDouble();
+
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (_) {
+        return defaultValue;
+      }
     }
 
-    // Step 4: Retrieve & Print FCM Token
-    String? fcmToken = await _firebaseMessaging.getToken();
-    print("📲 FCM Token: $fcmToken");
-
-    // Save Token to Firestore (Optional)
-    if (fcmToken != null) {
-      String userId = FirebaseAuth.instance.currentUser?.uid ?? "unknown_user";
-      await FirebaseFirestore.instance.collection('users').doc(userId).set(
-        {'fcmToken': fcmToken},
-        SetOptions(merge: true),
-      );
-    }
-
-    // Handle Notifications in Foreground
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print("🔔 Foreground Notification: ${message.notification?.title}");
-      // You can show a local notification here if needed
-    });
-
-    // Handle Notifications when App is Opened from Background
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print("📬 Opened from Background: ${message.notification?.title}");
-    });
-
-    // Handle Background Messages
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    return defaultValue;
   }
 }
-*/
+
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
+
+  Future<Map<String, double>> _fetchCoefficients() async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection("coefficients")
+          .doc("1")
+          .get();
+
+      Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
+
+      if (data == null) {
+        // Return default values if document doesn't exist or is empty
+        return {
+          "n1": 0.01,
+          "n2": 20.0,
+          "n3": 20.0,
+          "n4": 5.0,
+          "n5": 10.0,
+          "n6": 5.0,
+          "n7": 15.0,
+          "n8": 15.0,
+          "n9": 15.0,
+          "n10": 15.0,
+        };
+      }
+      print(data);
+      return {
+        "n1": _parseDoubleOrDefault(data["n1"], 0.01),
+        "n2": _parseDoubleOrDefault(data["n2"], 20.0),
+        "n3": _parseDoubleOrDefault(data["n3"], 20.0),
+        "n4": _parseDoubleOrDefault(data["n4"], 5.0),
+        "n5": _parseDoubleOrDefault(data["n5"], 10.0),
+        "n6": _parseDoubleOrDefault(data["n6"], 5.0),
+        "n7": _parseDoubleOrDefault(data["n7"], 15.0),
+        "n8": _parseDoubleOrDefault(data["n8"], 15.0),
+        "n9": _parseDoubleOrDefault(data["n9"], 15.0),
+        "n10": _parseDoubleOrDefault(data["n10"], 15.0),
+      };
+    } catch (e) {
+      print("Error fetching coefficients: $e");
+      // Return default values on error instead of empty map
+      return {
+        "n1": 0.01,
+        "n2": 20.0,
+        "n3": 20.0,
+        "n4": 5.0,
+        "n5": 10.0,
+        "n6": 5.0,
+        "n7": 15.0,
+        "n8": 15.0,
+        "n9": 15.0,
+        "n10": 15.0,
+      };
+    }
+  }
+
+// Helper method to parse values safely
+  double _parseDoubleOrDefault(dynamic value, double defaultValue) {
+    if (value == null) return defaultValue;
+
+    if (value is num) return value.toDouble();
+
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (_) {
+        return defaultValue;
+      }
+    }
+
+    return defaultValue;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +229,35 @@ class AuthWrapper extends StatelessWidget {
               }
 
               if (surveySnapshot.hasData && surveySnapshot.data!.exists) {
-                return MatchmakingScreen();
+                return FutureBuilder<Map<String, double>>(
+                  future: _fetchCoefficients(),
+                  builder: (context, coefSnapshot) {
+                    if (coefSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (coefSnapshot.hasData) {
+                      final coefficients = coefSnapshot.data!;
+                      return MatchmakingScreen(
+                        flag: false,
+                        n1: coefficients["n1"]!,
+                        n2: coefficients["n2"]!,
+                        n3: coefficients["n3"]!,
+                        n4: coefficients["n4"]!,
+                        n5: coefficients["n5"]!,
+                        n6: coefficients["n6"]!,
+                        n7: coefficients["n7"]!,
+                        n8: coefficients["n8"]!,
+                        n9: coefficients["n9"]!,
+                        n10: coefficients["n10"]!,
+                      );
+                    }
+
+                    return const Center(
+                        child: Text("Failed to load coefficients"));
+                  },
+                );
               } else {
                 return const SurveyView();
               }

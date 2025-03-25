@@ -7,18 +7,209 @@ import 'package:flutter_application_2/views/achievementsview.dart';
 import 'package:flutter_application_2/views/animatedmatch.dart';
 import 'package:flutter_application_2/views/mymatchesview.dart';
 import 'package:flutter_application_2/views/profileview.dart';
-import 'package:groq/groq.dart';
 import 'dart:math' as math;
+import 'package:flutter_application_2/views/reviewdatesview.dart';
 
-final groq = Groq(
-  apiKey: "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",
-  model: "llama-3.3-70b-versatile", // Optional: specify a model
-);
+class HomePage extends StatelessWidget {
+  final MatchmakingProfile profile;
+  final double n1, n2, n3, n4, n5, n6, n7, n8, n9, n10;
+  const HomePage({
+    Key? key,
+    required this.n1,
+    required this.n2,
+    required this.n3,
+    required this.n4,
+    required this.n5,
+    required this.n6,
+    required this.n7,
+    required this.n8,
+    required this.n9,
+    required this.n10,
+    required this.profile,
+  }) : super(key: key);
 
-Future<String> getLLMReply(String prompt) async {
-  groq.startChat();
-  GroqResponse response = await groq.sendMessage(prompt);
-  return (response.choices.first.message.content);
+  AppBar _buildAppBar(BuildContext context) {
+    return AppBar(
+      automaticallyImplyLeading: false,
+      backgroundColor: Colors.black,
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.center, // Center items
+        children: [
+          Image.asset(
+            'assets/images/logo.png',
+            height: 40,
+          ),
+          const SizedBox(width: 10), // Add some spacing between logo and button
+          ElevatedButton(
+            onPressed: () {
+              // Button action here
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black, // Set background to black
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8), // Rounded edges
+              ),
+            ),
+            child: const Text(
+              "MOBIUS",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color.fromARGB(255, 179, 255, 1), // Light green text
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: _buildAppBar(context),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF0D0D0D),
+              Color(0xFF1A1A1A),
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Expanded(
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 20,
+                  mainAxisSpacing: 20,
+                  children: [
+                    _buildOptionCard(
+                      context,
+                      "Achievements",
+                      Icons.emoji_events,
+                      AchievementsView(profile: profile),
+                    ),
+                    _buildOptionCard(
+                      context,
+                      "My Profile",
+                      Icons.person,
+                      ProfileView(
+                        profile: profile,
+                        onProfileUpdated: () {},
+                      ),
+                    ),
+                    _buildOptionCard(
+                      context,
+                      "My Matches",
+                      Icons.favorite,
+                      MyMatchesView(
+                          n1: n1,
+                          n2: n2,
+                          n3: n3,
+                          n4: n4,
+                          n5: n5,
+                          n6: n6,
+                          n7: n7,
+                          n8: n8,
+                          n9: n9,
+                          n10: n10),
+                    ),
+                    _buildOptionCard(
+                      context,
+                      "Review Your Date",
+                      Icons.rate_review,
+                      ReviewDatePage(
+                          n1: n1,
+                          n2: n2,
+                          n3: n3,
+                          n4: n4,
+                          n5: n5,
+                          n6: n6,
+                          n7: n7,
+                          n8: n8,
+                          n9: n9,
+                          n10: n10),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MatchmakingScreen(
+                          flag: true,
+                          n1: n1,
+                          n2: n2,
+                          n3: n3,
+                          n4: n4,
+                          n5: n5,
+                          n6: n6,
+                          n7: n7,
+                          n8: n8,
+                          n9: n9,
+                          n10: n10),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurpleAccent,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: const Text(
+                  "Enter Matchmaking Arena",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Widget _buildOptionCard(
+    BuildContext context, String title, IconData icon, Widget destination) {
+  return GestureDetector(
+    onTap: () => Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => destination),
+    ),
+    child: Card(
+      elevation: 5,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 50, color: Colors.pinkAccent),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class MatchmakingProfile {
@@ -41,7 +232,7 @@ class MatchmakingProfile {
   final String number;
   final List<String>? rightswipedby;
   final String description;
-  final List<String>? Heleftwiped;
+  final List<String>? heleftwiped;
   MatchmakingProfile(
       {required this.userId,
       required this.name,
@@ -62,7 +253,7 @@ class MatchmakingProfile {
       required this.number,
       required this.rightswipedby,
       required this.description,
-      this.Heleftwiped});
+      this.heleftwiped});
 
   factory MatchmakingProfile.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
@@ -86,11 +277,28 @@ class MatchmakingProfile {
         number: data['number'] ?? '',
         rightswipedby: List<String>.from(data['rightswipedby']),
         description: data['description'] ?? '',
-        Heleftwiped: List<String>.from(data['heleftswiped'] ?? []));
+        heleftwiped: List<String>.from(data['Heleftwiped'] ?? []));
   }
 }
 
+// ignore: must_be_immutable
 class MatchmakingScreen extends StatefulWidget {
+  final double n1, n2, n3, n4, n5, n6, n7, n8, n9, n10;
+  var flag = false;
+  MatchmakingScreen({
+    Key? key,
+    required this.n1,
+    required this.n2,
+    required this.n3,
+    required this.n4,
+    required this.n5,
+    required this.n6,
+    required this.n7,
+    required this.n8,
+    required this.n9,
+    required this.n10,
+    required this.flag,
+  }) : super(key: key);
   @override
   _MatchmakingScreenState createState() => _MatchmakingScreenState();
 }
@@ -209,16 +417,16 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       return -200.0;
     }
     double score = 0.0;
-    var n1 = 0.01;
-    var n2 = 20.0;
-    var n3 = 20.0;
-    var n4 = 5.0;
-    var n5 = 10.0;
-    var n6 = 5.0;
-    var n7 = 15.0;
-    var n8 = 15.0;
-    var n9 = 15.0;
-    var n10 = 15.0;
+    final n1 = widget.n1;
+    final n2 = widget.n2;
+    final n3 = widget.n3;
+    final n4 = widget.n4;
+    final n5 = widget.n5;
+    final n6 = widget.n6;
+    final n7 = widget.n7;
+    final n8 = widget.n8;
+    final n9 = widget.n9;
+    final n10 = widget.n10;
     score += n1 *
         (_calculatePersonalityOverlap(
             currentUserProfile!.personality, profile.personality));
@@ -678,6 +886,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
 
   AppBar _buildAppBar(BuildContext context) {
     return AppBar(
+      automaticallyImplyLeading: false,
       title: Row(
         children: [
           Padding(
@@ -689,7 +898,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
                 size: 35,
               ),
               onPressed: () => _showAchievemnts(context),
-              tooltip: 'View Profile',
+              tooltip: 'Achievements',
             ),
           ),
           const SizedBox(width: 40),
@@ -699,7 +908,17 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => MyMatchesView(),
+                  builder: (context) => MyMatchesView(
+                      n1: widget.n1,
+                      n2: widget.n2,
+                      n3: widget.n3,
+                      n4: widget.n4,
+                      n5: widget.n5,
+                      n6: widget.n6,
+                      n7: widget.n7,
+                      n8: widget.n8,
+                      n9: widget.n9,
+                      n10: widget.n10),
                 ),
               );
             },
@@ -708,12 +927,40 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
               height: 40,
             ),
           ),
-          const Text(
-            "MOBIUS",
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Color.fromARGB(255, 179, 255, 1),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => HomePage(
+                      profile: currentUserProfile!,
+                      n1: widget.n1,
+                      n2: widget.n2,
+                      n3: widget.n3,
+                      n4: widget.n4,
+                      n5: widget.n5,
+                      n6: widget.n6,
+                      n7: widget.n7,
+                      n8: widget.n8,
+                      n9: widget.n9,
+                      n10: widget.n10),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black, // Set background to black
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8), // Rounded edges
+              ),
+            ),
+            child: const Text(
+              "MOBIUS",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color.fromARGB(255, 179, 255, 1), // Light green text
+              ),
             ),
           ),
         ],
@@ -857,16 +1104,19 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.sentiment_dissatisfied,
-                      size: 48,
-                      color: Colors.redAccent,
+                    const SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 4,
+                        color:
+                            Colors.redAccent, // Match the previous icon color
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -894,7 +1144,20 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
         ),
       );
     }
-
+    if (!widget.flag) {
+      return HomePage(
+          profile: currentUserProfile!,
+          n1: widget.n1,
+          n2: widget.n2,
+          n3: widget.n3,
+          n4: widget.n4,
+          n5: widget.n5,
+          n6: widget.n6,
+          n7: widget.n7,
+          n8: widget.n8,
+          n9: widget.n9,
+          n10: widget.n10);
+    }
     MatchmakingProfile currentMatch = potentialMatches[currentMatchIndex];
     double matchScore = rankedMatches[currentMatchIndex].value;
 
@@ -1143,10 +1406,17 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 25),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context, 'matched'); // Returns to home page
+                  },
+                  child: const Text('Back to Home'),
+                ),
               ],
             ),
           ),
           // Profile Image Positioned Above Card
+
           Positioned(
             top: 40,
             left: 0,

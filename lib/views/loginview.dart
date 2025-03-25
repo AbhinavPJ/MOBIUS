@@ -167,7 +167,7 @@ class _LoginViewState extends State<LoginView> {
 
         if (surveyDoc.exists) {
           Navigator.of(context)
-              .pushNamedAndRemoveUntil('/matchmaking', (route) => false);
+              .pushNamedAndRemoveUntil('/home', (route) => false);
         } else {
           Navigator.of(context)
               .pushNamedAndRemoveUntil('/survey', (route) => false);

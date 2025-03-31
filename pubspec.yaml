@@ -48,6 +48,8 @@ dependencies:
   confetti: ^0.7.0
   url_launcher: ^6.1.14
   flutter_rating_bar: ^4.0.1
+  precached_network_image: ^1.2.4
+  provider: ^6.1.4
 
 dev_dependencies:
   flutter_launcher_icons: "^0.14.3"
@@ -87,12 +89,24 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   fonts:
+    - family: Cinzel
+      fonts:
+        - asset: assets/fonts/CinzelDecorative-Regular.ttf
     - family: Times
       fonts:
         - asset: assets/fonts/times.ttf
     - family: Futura
       fonts:
         - asset: assets/fonts/futura.ttf
+    - family: Arizonia
+      fonts:
+        - asset: assets/fonts/Arizonia-Regular.ttf
+    - family: Playfair Display
+      fonts:
+        - asset: assets/fonts/PlayfairDisplay-Regular.ttf
+    - family: Montserrat
+      fonts:
+        - asset: assets/fonts/Montserrat-Regular.ttf
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/secrets.json

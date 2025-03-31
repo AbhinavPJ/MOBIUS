@@ -94,14 +94,14 @@ class AchievementsView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
           'Achievements',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.black),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -113,8 +113,8 @@ class AchievementsView extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromRGBO(0, 0, 0, 1),
-              Color.fromRGBO(10, 10, 10, 1),
+              Color.fromRGBO(255, 255, 255, 1),
+              Color.fromRGBO(255, 255, 255, 1),
             ],
           ),
         ),
@@ -133,7 +133,7 @@ class AchievementsView extends StatelessWidget {
 
             final achievements = snapshot.data!;
             return ListView.builder(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(2),
               itemCount: achievements.length,
               itemBuilder: (context, index) {
                 return _buildAchievementCard(achievements[index]);
@@ -152,57 +152,76 @@ class AchievementsView extends StatelessWidget {
     if (achievement.currentProgress >= achievement.benchmark3) starsEarned += 1;
 
     return Card(
-      color: Colors.black87,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: List.generate(3, (index) {
-                return Icon(
-                  Icons.star,
-                  size: 24,
-                  color: index < starsEarned ? Colors.amber : Colors.grey,
-                );
-              }),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              achievement.name,
-              style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            ),
-            Text(achievement.description,
-                style: const TextStyle(fontSize: 14, color: Colors.white70)),
-            const SizedBox(height: 12),
-            if (!achievement.isComplete) ...[
-              Text(
-                '${achievement.currentProgress}/${achievement.totalRequired}',
-                style: const TextStyle(fontSize: 12, color: Colors.white70),
-              ),
-              const SizedBox(height: 4),
-              LinearProgressIndicator(
-                value: achievement.currentProgress / achievement.totalRequired,
-                minHeight: 10,
-                backgroundColor: Colors.grey[800],
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
-              ),
-            ] else ...[
-              const Text(
-                'Achievement Complete!',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
-                ),
-              ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFFE3F2FD), // Soft pastel blue
+              const Color(0xFFF3E5F5), // Very soft lavender
+              const Color(0xFFFAFAFA), // Almost white
             ],
-          ],
+            stops: [0.0, 0.5, 1.0],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: List.generate(3, (index) {
+                  return Icon(
+                    Icons.star,
+                    size: 24,
+                    color: index < starsEarned ? Colors.amber : Colors.grey,
+                  );
+                }),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                achievement.name,
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 0, 0, 0)),
+              ),
+              Text(
+                achievement.description,
+                style: const TextStyle(
+                    fontSize: 14, color: Color.fromARGB(255, 0, 0, 0)),
+              ),
+              const SizedBox(height: 8),
+              if (!achievement.isComplete) ...[
+                Text(
+                  '${achievement.currentProgress}/${achievement.totalRequired}',
+                  style: const TextStyle(
+                      fontSize: 12, color: Color.fromARGB(255, 0, 0, 0)),
+                ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value:
+                      achievement.currentProgress / achievement.totalRequired,
+                  minHeight: 10,
+                  backgroundColor: Colors.grey[800],
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+                ),
+              ] else ...[
+                const Text(
+                  'Achievement Complete!',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

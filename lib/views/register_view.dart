@@ -28,90 +28,89 @@ class _RegisterViewState extends State<RegisterView> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset:
+          true, // Allows content to move when keyboard appears
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: const Color.fromRGBO(165, 18, 178, 0.604),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color.fromRGBO(0, 0, 0, 1),
-              Color.fromRGBO(10, 10, 10, 1),
-            ],
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 2,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    'assets/images/logo.png',
-                    height: 120,
-                  ),
-                  const SizedBox(height: 15),
-                  const Text(
-                    "MOBIUS",
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 179, 255, 0),
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    "Swipe. Match. Meet. Exclusively for IITD.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return AnimatedPadding(
+            duration: const Duration(milliseconds: 200),
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom),
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color.fromRGBO(165, 18, 178, 0.604),
+                    Color.fromRGBO(189, 148, 215, 1),
+                  ],
+                ),
               ),
-            ),
-
-            const SizedBox(height: 40), // Increased spacing
-
-            Expanded(
-              flex: 3,
               child: SingleChildScrollView(
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    const SizedBox(height: 20),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          "MOBIUS",
+                          style: TextStyle(
+                            fontSize: 40,
+                            fontFamily: 'Cinzel',
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Image.asset(
+                          'assets/images/logo.png',
+                          height: 120,
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          "Swipe. Match. Meet. Exclusively for IITD.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color.fromARGB(225, 255, 255, 255),
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                     _buildTextField(_email, "Enter email", false),
-                    const SizedBox(height: 20), // Increased spacing
+                    const SizedBox(height: 20),
                     _buildTextField(_password, "Enter password", true),
-                    const SizedBox(height: 30), // Increased spacing
+                    const SizedBox(height: 30),
                     _buildButton(
                         "Register", Colors.white, Colors.black, _registerUser),
-                    const SizedBox(height: 20), // Increased spacing
+                    const SizedBox(height: 20),
                     TextButton(
                       onPressed: () => Navigator.pushNamed(context, '/login'),
                       child: const Text(
                         "Already Registered? Login Here",
                         style: TextStyle(
-                          color: Color.fromARGB(255, 179, 255, 80),
+                          color: Colors.deepPurple,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.underline,
                         ),
                       ),
                     ),
@@ -119,8 +118,8 @@ class _RegisterViewState extends State<RegisterView> {
                 ),
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -161,9 +160,6 @@ class _RegisterViewState extends State<RegisterView> {
         });
       }
 
-      print("User Registered & Data Saved Successfully!");
-
-      // Ensure navigation happens immediately after registration
       Navigator.of(context)
           .pushNamedAndRemoveUntil('/verify', (route) => false);
     } on FirebaseAuthException catch (e) {
@@ -173,20 +169,11 @@ class _RegisterViewState extends State<RegisterView> {
 
   Future<void> _sendVerificationEmail(User user) async {
     try {
-      // Check if user is still not verified
       await user.reload();
-      if (user.emailVerified) {
-        return; // No need to send another verification email
-      }
-
+      if (user.emailVerified) return;
       await user.sendEmailVerification();
-      print("Verification email sent successfully.");
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'too-many-requests') {
-        _showError("Too many requests. Try again later.");
-      } else {
-        _showError("Error sending verification email: ${e.message}");
-      }
+      _showError("Error sending verification email: ${e.message}");
     }
   }
 
@@ -204,8 +191,6 @@ class _RegisterViewState extends State<RegisterView> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30),
       child: TextField(
-        enableSuggestions: false,
-        autocorrect: false,
         controller: controller,
         obscureText: isPassword,
         style: const TextStyle(color: Colors.white),
@@ -213,7 +198,7 @@ class _RegisterViewState extends State<RegisterView> {
           hintText: hintText,
           hintStyle: const TextStyle(color: Colors.white70),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: Colors.white.withOpacity(0.2),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),
             borderSide: BorderSide.none,

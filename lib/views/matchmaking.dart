@@ -1,216 +1,15 @@
 // ignore_for_file: use_key_in_widget_constructors, library_private_types_in_public_api
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_2/views/achievementsview.dart';
 import 'package:flutter_application_2/views/animatedmatch.dart';
+import 'package:flutter_application_2/views/card_provider.dart';
 import 'package:flutter_application_2/views/mymatchesview.dart';
 import 'package:flutter_application_2/views/profileview.dart';
 import 'dart:math' as math;
 import 'package:flutter_application_2/views/reviewdatesview.dart';
-
-class HomePage extends StatelessWidget {
-  final MatchmakingProfile profile;
-  final double n1, n2, n3, n4, n5, n6, n7, n8, n9, n10;
-  const HomePage({
-    Key? key,
-    required this.n1,
-    required this.n2,
-    required this.n3,
-    required this.n4,
-    required this.n5,
-    required this.n6,
-    required this.n7,
-    required this.n8,
-    required this.n9,
-    required this.n10,
-    required this.profile,
-  }) : super(key: key);
-
-  AppBar _buildAppBar(BuildContext context) {
-    return AppBar(
-      automaticallyImplyLeading: false,
-      backgroundColor: Colors.black,
-      title: Row(
-        mainAxisAlignment: MainAxisAlignment.center, // Center items
-        children: [
-          Image.asset(
-            'assets/images/logo.png',
-            height: 40,
-          ),
-          const SizedBox(width: 10), // Add some spacing between logo and button
-          ElevatedButton(
-            onPressed: () {
-              // Button action here
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black, // Set background to black
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8), // Rounded edges
-              ),
-            ),
-            child: const Text(
-              "MOBIUS",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color.fromARGB(255, 179, 255, 1), // Light green text
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _buildAppBar(context),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0D0D0D),
-              Color(0xFF1A1A1A),
-            ],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 20,
-                  mainAxisSpacing: 20,
-                  children: [
-                    _buildOptionCard(
-                      context,
-                      "Achievements",
-                      Icons.emoji_events,
-                      AchievementsView(profile: profile),
-                    ),
-                    _buildOptionCard(
-                      context,
-                      "My Profile",
-                      Icons.person,
-                      ProfileView(
-                        profile: profile,
-                        onProfileUpdated: () {},
-                      ),
-                    ),
-                    _buildOptionCard(
-                      context,
-                      "My Matches",
-                      Icons.favorite,
-                      MyMatchesView(
-                          n1: n1,
-                          n2: n2,
-                          n3: n3,
-                          n4: n4,
-                          n5: n5,
-                          n6: n6,
-                          n7: n7,
-                          n8: n8,
-                          n9: n9,
-                          n10: n10),
-                    ),
-                    _buildOptionCard(
-                      context,
-                      "Review Your Date",
-                      Icons.rate_review,
-                      ReviewDatePage(
-                          n1: n1,
-                          n2: n2,
-                          n3: n3,
-                          n4: n4,
-                          n5: n5,
-                          n6: n6,
-                          n7: n7,
-                          n8: n8,
-                          n9: n9,
-                          n10: n10),
-                    ),
-                  ],
-                ),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MatchmakingScreen(
-                          flag: true,
-                          n1: n1,
-                          n2: n2,
-                          n3: n3,
-                          n4: n4,
-                          n5: n5,
-                          n6: n6,
-                          n7: n7,
-                          n8: n8,
-                          n9: n9,
-                          n10: n10),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurpleAccent,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-                child: const Text(
-                  "Enter Matchmaking Arena",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-Widget _buildOptionCard(
-    BuildContext context, String title, IconData icon, Widget destination) {
-  return GestureDetector(
-    onTap: () => Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => destination),
-    ),
-    child: Card(
-      elevation: 5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 50, color: Colors.pinkAccent),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    ),
-  );
-}
+import 'package:provider/provider.dart';
 
 class MatchmakingProfile {
   final String userId;
@@ -307,89 +106,474 @@ class MatchmakingScreen extends StatefulWidget {
 class _MatchmakingScreenState extends State<MatchmakingScreen>
     with TickerProviderStateMixin {
   // Animation controller for the flip card
+  List<MatchmakingProfile> _stackedProfiles = [];
+  bool _isTransitioning = false;
   late AnimationController _flipController;
-  late Animation<double> _flipAnimation;
-  // New animation controllers for swipe transitions
-  late AnimationController _swipeController;
-  late Animation<Offset> _swipeAnimation;
-  late Animation<double> _fadeAnimation;
-
-  final _random = math.Random();
-  bool _isMatchPopupShown = false; // Add this to your class
-  bool _isAnimating = false; // Track if the card was accepted or rejected
-  bool _isFrontVisible = true;
-  bool _isLastProfile = false; // Add this to your state variables
+  bool _isMatchPopupShown = false;
+  bool _isLastProfile = false;
+  bool _showThankYouPage = false;
+  bool _isCardFlipped = false; // Controls card side (front/back)
+  int _currentDisplayState = 1;
   MatchmakingProfile? currentUserProfile;
   List<MatchmakingProfile> potentialMatches = [];
   List<MapEntry<MatchmakingProfile, double>> rankedMatches = [];
   int currentMatchIndex = 0;
   String? currentDescription;
   bool isLoadingDescription = false;
+  var len = 0;
+  var L = [];
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize the flip animation controller
+    _fetchUserProfiles();
     _flipController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
 
-    _flipAnimation = Tween<double>(begin: 0, end: 1).animate(_flipController)
-      ..addListener(() {
-        if (mounted) {
-          setState(() {});
-        }
-      });
-    // Initialize the swipe animation controller
-    _swipeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-
-    _swipeAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(1.5, 0), // Will be updated based on swipe direction
-    ).animate(CurvedAnimation(
-      parent: _swipeController,
-      curve: Curves.easeOut,
-    ));
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _swipeController,
-      curve: const Interval(0.5, 1.0, curve: Curves.easeIn),
-    ));
-
-    _swipeController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _finishSwipeTransition();
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final size = MediaQuery.of(context).size;
+      final provider = Provider.of<CardProvider>(context, listen: false);
+      provider.setScreenSize(size);
     });
-    _fetchUserProfiles();
   }
 
   @override
   void dispose() {
     _flipController.dispose();
-    _swipeController.dispose();
     super.dispose();
   }
 
+  void _cycleDisplayState() {
+    setState(() {
+      // Cycle through display states (1-3)
+      _currentDisplayState =
+          _currentDisplayState < 3 ? _currentDisplayState + 1 : 1;
+    });
+  }
+
+// Handle card flipping (front/back)
   void _flipCard() {
-    if (_flipController.status != AnimationStatus.forward &&
-        _flipController.status != AnimationStatus.reverse) {
-      if (_isFrontVisible) {
-        _flipController.forward();
-      } else {
-        _flipController.reverse();
+    setState(() {
+      // Toggle between front and back
+      _isCardFlipped = !_isCardFlipped;
+    });
+  }
+
+  Widget _buildCardStack() {
+    if (_stackedProfiles.isEmpty) {
+      _prepareCardStack();
+      if (_stackedProfiles.isEmpty) {
+        return Container(); // Return empty container when no matches
       }
+    }
+
+    // Build state indicators
+    Widget stateIndicators = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildStateIndicator(1, "Score"),
+          _buildStateIndicator(2, "Year"),
+          _buildStateIndicator(3, "Dept"),
+        ],
+      ),
+    );
+
+    List<Widget> stackedCards = [];
+    final int totalCards = _stackedProfiles.length;
+
+    // Bottom card (if available)
+    if (totalCards >= 3) {
+      MatchmakingProfile thirdProfile = _stackedProfiles[0];
+      double thirdScore = _getScoreForProfile(thirdProfile);
+      String thirdBeta = (thirdScore % 100).toStringAsFixed(2);
+
+      stackedCards.add(
+        Positioned(
+          top: 40.0,
+          child: Transform.scale(
+            scale: 0.8,
+            child: Opacity(
+              opacity: 0.4,
+              child: BuildCard(thirdProfile, thirdBeta),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Middle card (if available)
+    if (totalCards >= 2) {
+      MatchmakingProfile secondProfile = _stackedProfiles[totalCards - 2];
+      double secondScore = _getScoreForProfile(secondProfile);
+      String secondBeta = (secondScore % 100).toStringAsFixed(2);
+
+      stackedCards.add(
+        Positioned(
+          top: 20.0,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 300),
+            opacity: _isTransitioning ? 0.7 : 0.7,
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 300),
+              scale: _isTransitioning ? 0.95 : 0.9,
+              child: BuildCard(secondProfile, secondBeta),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Front card - handle flipping here but not state switching
+    if (totalCards > 0) {
+      MatchmakingProfile frontProfile = _stackedProfiles[totalCards - 1];
+      double frontScore = _getScoreForProfile(frontProfile);
+      String frontBeta = (frontScore % 100).toStringAsFixed(2);
+
+      // Simple flipping mechanism
+      Widget frontWidget = _isCardFlipped
+          ? _buildDescriptionCard(frontProfile)
+          : buildFrontCard(frontProfile, frontBeta);
+
+      stackedCards.add(frontWidget);
+    }
+
+    return Column(
+      children: [
+        stateIndicators,
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 520, // Fixed height for card stack
+          child: Stack(
+            alignment: Alignment.center,
+            children: stackedCards,
+          ),
+        ),
+      ],
+    );
+  }
+
+// Simplified description card without any transformation logic
+  Widget _buildDescriptionCard(MatchmakingProfile profile) {
+    return Container(
+      width: 350,
+      height: 500,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Text(
+            profile.description,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black87,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStateIndicator(int stateNumber, String label) {
+    bool isActive = _currentDisplayState == stateNumber;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _currentDisplayState = stateNumber;
+          });
+        },
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 5),
+          child: Column(
+            children: [
+              Container(
+                height: 4,
+                decoration: BoxDecoration(
+                  color:
+                      isActive ? Colors.deepPurpleAccent : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color:
+                      isActive ? Colors.deepPurpleAccent : Colors.grey.shade600,
+                  fontSize: 12,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // New method to build a flippable card
+
+  Widget buildFrontCard(MatchmakingProfile currentMatch, String beta) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return GestureDetector(
+          // Tap on card cycles through info states
+          onTap: _cycleDisplayState,
+          child: Consumer<CardProvider>(
+            builder: (context, provider, child) {
+              final angle = (provider.angle) * math.pi / 180;
+              final center = constraints.smallest.center(Offset.zero);
+
+              // Only apply the swipe rotation
+              final rotatedMatrix = Matrix4.identity()
+                ..translate(center.dx, center.dy)
+                ..rotateZ(angle)
+                ..translate(-center.dx, -center.dy);
+
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 0),
+                transform: rotatedMatrix
+                  ..translate(provider.position.dx, provider.position.dy),
+                child: BuildCard(currentMatch, beta),
+              );
+            },
+          ),
+          // Pan gestures for swiping
+          onPanStart: (details) {
+            Provider.of<CardProvider>(context, listen: false)
+                .startPosition(details);
+          },
+          onPanUpdate: (details) {
+            Provider.of<CardProvider>(context, listen: false)
+                .updatePosition(details);
+          },
+          onPanEnd: (details) {
+            final provider = Provider.of<CardProvider>(context, listen: false);
+            provider.endPosition();
+
+            // Check swipe result
+            final status = provider.getStatus();
+
+            if (status != SwipeStatus.none) {
+              // Handle swipe based on direction
+              if (status == SwipeStatus.like) {
+                _handleSwipeRight();
+              } else if (status == SwipeStatus.dislike) {
+                _handleSwipeLeft();
+              }
+
+              // Reset card position
+              provider.resetPosition();
+            }
+          },
+        );
+      },
+    );
+  }
+
+// Modified to handle different display states only (not flipping)
+  Widget buildInfo(MatchmakingProfile profile, String beta) {
+    String displayText;
+    switch (_currentDisplayState) {
+      case 1:
+        displayText = "Match score: $beta";
+        break;
+      case 2:
+        displayText = Fetchyear(profile);
+        break;
+      case 3:
+        displayText = Fetchdept(profile);
+        break;
+      default:
+        displayText = "Match score: $beta";
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          profile.name,
+          style: const TextStyle(
+            fontSize: 28,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            shadows: [Shadow(blurRadius: 10, color: Colors.black)],
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          displayText,
+          style: const TextStyle(
+            fontSize: 18,
+            color: Colors.white70,
+            fontWeight: FontWeight.w500,
+            shadows: [Shadow(blurRadius: 10, color: Colors.black)],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget BuildCard(MatchmakingProfile currentMatch, String beta) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        children: [
+          // Background image
+          Container(
+            width: 350,
+            height: 500,
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage(currentMatch.profilePicture),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+
+          // Gradient overlay at the bottom for better readability
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 100,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.8),
+                    Colors.black.withOpacity(0.3),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Profile info at the bottom left with updated info display
+          Positioned(
+            bottom: 20,
+            left: 20,
+            child: buildInfo(currentMatch, beta),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Update buildFrontCard to handle the flip gesture
+
+  // Update the _handleSwipeLeft and _handleSwipeRight for seamless transitions
+  void _handleSwipeLeft() async {
+    if (_isTransitioning) return;
+
+    if (potentialMatches.isNotEmpty) {
+      setState(() {
+        _isTransitioning = true;
+        _isCardFlipped = false; // Reset flip state for new card
+      });
+
+      // Pre-fetch the next stack while animation is happening
+      DocumentReference matchRef = FirebaseFirestore.instance
+          .collection('surveys')
+          .doc(currentUserProfile!.userId);
+
+      // Update Firebase in the background, don't wait for it
+      matchRef.update({
+        'Heleftwiped': FieldValue.arrayUnion(
+            [potentialMatches[potentialMatches.length - 1].userId])
+      });
+
+      // Animate transition but prepare next card immediately
       if (mounted) {
         setState(() {
-          _isFrontVisible = !_isFrontVisible;
+          // Remove current card
+          if (potentialMatches.isNotEmpty) {
+            potentialMatches.removeLast();
+            rankedMatches.removeLast();
+          }
+
+          // Check if we've run out of cards
+          if (potentialMatches.isEmpty) {
+            _showThankYouPage = true;
+          } else {
+            // Refresh the stack immediately
+            _prepareCardStack();
+          }
+
+          // Short delay before enabling interactions again
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (mounted) {
+              setState(() {
+                _isTransitioning = false;
+              });
+            }
+          });
+        });
+      }
+    }
+  }
+
+  void _handleSwipeRight() {
+    if (_isTransitioning) return;
+
+    if (potentialMatches.isNotEmpty) {
+      // Get the current front profile
+      int frontIndex = potentialMatches.length - 1;
+      MatchmakingProfile frontProfile = potentialMatches[frontIndex];
+
+      setState(() {
+        _isTransitioning = true;
+        _isCardFlipped = false; // Reset flip state for new card
+      });
+
+      // Handle like/match logic in background
+      if (currentUserProfile != null) {
+        AClogic(currentUserProfile!, frontProfile);
+      }
+
+      // Update UI immediately
+      if (mounted) {
+        setState(() {
+          // Remove current card
+          if (potentialMatches.isNotEmpty) {
+            potentialMatches.removeLast();
+            rankedMatches.removeLast();
+          }
+
+          // Check if we've run out of cards
+          if (potentialMatches.isEmpty) {
+            _showThankYouPage = true;
+          } else {
+            // Refresh the stack immediately
+            _prepareCardStack();
+          }
+
+          // Short delay before enabling interactions again
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (mounted) {
+              setState(() {
+                _isTransitioning = false;
+              });
+            }
+          });
         });
       }
     }
@@ -403,8 +587,8 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     return profiles
         .map((profile) => MapEntry(profile, _calculateMatchScore(profile)))
         .toList()
-      ..sort((a, b) => b.value
-          .compareTo(a.value)); // Sort in descending order of match score
+      ..sort((a, b) => (-b.value)
+          .compareTo(-a.value)); // Sort in descending order of match score
   }
 
   // Placeholder match score calculation
@@ -413,9 +597,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       return 0.0;
     }
     print(currentUserProfile!.name);
-    if ((profile.name) == "peeeejaaayyy") {
-      return -200.0;
-    }
+
     double score = 0.0;
     final n1 = widget.n1;
     final n2 = widget.n2;
@@ -700,6 +882,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
 
         setState(() {
           potentialMatches = rankedMatches.map((entry) => entry.key).toList();
+          len = potentialMatches.length;
         });
 
         // Load first description
@@ -738,90 +921,6 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
         });
       }
     }
-  }
-
-  // Helper method to reset and prepare for next animation
-  void _moveToNextMatch({bool accepted = false}) {
-    if (!mounted) return;
-
-    // First, check if this is the last profile
-    bool isLastProfile = currentMatchIndex + 1 >= potentialMatches.length;
-
-    // If it's the last profile and the user accepted, handle the match first
-    if (isLastProfile && accepted && currentUserProfile != null) {
-      // Store the current match before animation
-      final currentMatch = potentialMatches[currentMatchIndex];
-
-      // Process the match logic first
-      AClogic(currentUserProfile!, currentMatch).then((isMatch) {
-        // If it's a match, we'll let the match popup handle navigation
-        if (mounted) {
-          // Only go to final page if it's not a match
-          _prepareForNextAnimation(accepted, isLastProfile);
-          _swipeController.forward();
-        }
-      });
-    } else {
-      // For non-last profiles or rejections, continue as before
-      _prepareForNextAnimation(accepted, isLastProfile);
-      _swipeController.forward();
-    }
-
-    // Make sure card is showing front side for the next profile
-    if (!_isFrontVisible) {
-      _flipCard();
-    }
-  }
-
-// Helper method to reset and prepare for next animation
-  void _prepareForNextAnimation(bool accepted, bool isLastProfile) {
-    if (mounted) {
-      // Generate random vertical offset between -0.5 and 0.5
-      double randomVerticalOffset = (_random.nextDouble() - 0.5);
-      // Generate random rotation angle between -0.2 and 0.2 radians
-
-      setState(() {
-        _isAnimating = true;
-        _isLastProfile = isLastProfile;
-
-        // Set the horizontal direction based on acceptance
-        double horizontalDirection = accepted ? 1.5 : -1.5;
-
-        // Create the animation with random vertical component
-        _swipeAnimation = Tween<Offset>(
-          begin: Offset.zero,
-          end: Offset(horizontalDirection, randomVerticalOffset),
-        ).animate(CurvedAnimation(
-          parent: _swipeController,
-          curve: Curves.easeOut,
-        ));
-
-        // Add rotation to the animation
-      });
-    }
-  }
-
-// Complete the transition after animation
-  void _finishSwipeTransition() {
-    if (!mounted) return;
-
-    // Check if this was the last profile
-
-    setState(() {
-      _isAnimating = false;
-      _swipeController.reset();
-
-      // Make sure card is showing front side for the next profile
-      if (!_isFrontVisible) {
-        _isFrontVisible = true;
-      }
-
-      // Now increment the index after animation completes
-      currentMatchIndex = (currentMatchIndex + 1) % potentialMatches.length;
-
-      // Load the description for the new profile
-      _loadProfileDescription(potentialMatches[currentMatchIndex]);
-    });
   }
 
   // Modified AClogic method to not require context
@@ -884,28 +983,79 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     }
   }
 
-  AppBar _buildAppBar(BuildContext context) {
-    return AppBar(
-      automaticallyImplyLeading: false,
-      title: Row(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: IconButton(
-              icon: Icon(
-                Icons.emoji_events,
-                color: Colors.white,
-                size: 35,
+  BottomNavigationBar _buildBottomBar(BuildContext context) {
+    return BottomNavigationBar(
+      backgroundColor:
+          Colors.white, // Matches the white background in the image
+      selectedItemColor: Colors.purple, // Highlight color for selected item
+      unselectedItemColor: Colors.black, // Default color for unselected icons
+      type: BottomNavigationBarType.fixed,
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home, size: 32),
+          label: "",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.rate_review_outlined, size: 32),
+          label: "",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.emoji_events_outlined, size: 32),
+          label: "",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.favorite_border, size: 32),
+          label: "",
+        ),
+      ],
+      onTap: (index) {
+        switch (index) {
+          case 0:
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MyMatchesView(
+                  n1: widget.n1,
+                  n2: widget.n2,
+                  n3: widget.n3,
+                  n4: widget.n4,
+                  n5: widget.n5,
+                  n6: widget.n6,
+                  n7: widget.n7,
+                  n8: widget.n8,
+                  n9: widget.n9,
+                  n10: widget.n10,
+                ),
               ),
-              onPressed: () => _showAchievemnts(context),
-              tooltip: 'Achievements',
-            ),
-          ),
-          const SizedBox(width: 40),
-          // Change logo to be a button
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
+            );
+            break;
+          case 1:
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReviewDatePage(
+                      n1: widget.n1,
+                      n2: widget.n2,
+                      n3: widget.n3,
+                      n4: widget.n4,
+                      n5: widget.n5,
+                      n6: widget.n6,
+                      n7: widget.n7,
+                      n8: widget.n8,
+                      n9: widget.n9,
+                      n10: widget.n10),
+                ));
+            break;
+          case 2:
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) =>
+                      AchievementsView(profile: currentUserProfile!)),
+            );
+            break;
+          case 3:
+            Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => MyMatchesView(
@@ -919,120 +1069,10 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
                       n8: widget.n8,
                       n9: widget.n9,
                       n10: widget.n10),
-                ),
-              );
-            },
-            child: Image.asset(
-              'assets/images/logo.png',
-              height: 40,
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => HomePage(
-                      profile: currentUserProfile!,
-                      n1: widget.n1,
-                      n2: widget.n2,
-                      n3: widget.n3,
-                      n4: widget.n4,
-                      n5: widget.n5,
-                      n6: widget.n6,
-                      n7: widget.n7,
-                      n8: widget.n8,
-                      n9: widget.n9,
-                      n10: widget.n10),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black, // Set background to black
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8), // Rounded edges
-              ),
-            ),
-            child: const Text(
-              "MOBIUS",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color.fromARGB(255, 179, 255, 1), // Light green text
-              ),
-            ),
-          ),
-        ],
-      ),
-      centerTitle: true,
-      actions: [
-        // Profile button
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: IconButton(
-            icon: Icon(
-              Icons.account_circle,
-              color: Colors.white,
-              size: 35,
-            ),
-            onPressed: () => _showProfileDialog(context),
-            tooltip: 'View Profile',
-          ),
-        ),
-      ],
-      flexibleSpace: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color.fromRGBO(0, 0, 0, 1),
-              Color.fromRGBO(0, 0, 0, 1),
-            ],
-          ),
-        ),
-      ),
-      elevation: 0,
-    );
-  }
-
-  void _showAchievemnts(BuildContext context) {
-    if (currentUserProfile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Profile is still loading. Please try again.')),
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AchievementsView(profile: currentUserProfile!),
-      ),
-    );
-  }
-
-  void _showProfileDialog(BuildContext context) {
-    if (currentUserProfile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Profile is still loading. Please try again.')),
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProfileView(
-          profile: currentUserProfile!,
-          onProfileUpdated: () {
-            _fetchUserProfiles(); // Refresh profile data
-          },
-        ),
-      ),
+                ));
+            break;
+        }
+      },
     );
   }
 
@@ -1081,637 +1121,335 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     });
   }
 
-  // Update the build method to use mounted check instead of _isDisposed
-  @override
-  Widget build(BuildContext context) {
-    if (potentialMatches.isEmpty) {
-      return Scaffold(
-        appBar: _buildAppBar(context),
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color.fromARGB(255, 0, 0, 0),
-                Color.fromARGB(255, 0, 0, 0)
-              ],
-            ),
-          ),
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 4,
-                        color:
-                            Colors.redAccent, // Match the previous icon color
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      "Oh no!",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "We couldn't find any matches for you.\nTry your luck again later!",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-    if (!widget.flag) {
-      return HomePage(
-          profile: currentUserProfile!,
-          n1: widget.n1,
-          n2: widget.n2,
-          n3: widget.n3,
-          n4: widget.n4,
-          n5: widget.n5,
-          n6: widget.n6,
-          n7: widget.n7,
-          n8: widget.n8,
-          n9: widget.n9,
-          n10: widget.n10);
-    }
-    MatchmakingProfile currentMatch = potentialMatches[currentMatchIndex];
-    double matchScore = rankedMatches[currentMatchIndex].value;
-
-    return Scaffold(
-      appBar: _buildAppBar(context),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color.fromARGB(255, 0, 0, 0),
-              Color.fromARGB(255, 0, 0, 0)
-            ],
-          ),
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Stack(
-              children: [
-                // Current profile card with swipe animation
-                SlideTransition(
-                  position: _swipeAnimation,
-                  child: Transform(
-                    transform:
-                        Matrix4.rotationY(_flipAnimation.value * math.pi),
-                    alignment: Alignment.center,
-                    child: _isFrontVisible
-                        ? _buildFrontCard(currentMatch, matchScore)
-                        : _buildBackCard(currentMatch),
-                  ),
-                ),
-
-                // Fade in next profile card if animating
-                if (_isAnimating &&
-                    currentMatchIndex + 1 < potentialMatches.length)
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Transform(
-                      transform: Matrix4.rotationY(0),
-                      alignment: Alignment.center,
-                      child: _buildFrontCard(
-                        potentialMatches[
-                            (currentMatchIndex + 1) % potentialMatches.length],
-                        rankedMatches[
-                                (currentMatchIndex + 1) % rankedMatches.length]
-                            .value,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBackCard(MatchmakingProfile currentMatch) {
-    return Transform(
-      alignment: Alignment.center,
-      transform: Matrix4.rotationY(math.pi),
-      child: Stack(
-        clipBehavior: Clip.none,
+  AppBar _buildAppBar(BuildContext context) {
+    return AppBar(
+      automaticallyImplyLeading: false,
+      backgroundColor: Colors.white,
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.center, // Center items
         children: [
-          // Background Container
-          Container(
-            width: 390,
-            height: 660,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFFFD700), width: 10),
-              color: const Color.fromARGB(
-                  255, 46, 49, 73), // Same dark blue as front
-              boxShadow: [
-                const BoxShadow(
-                  color: Colors.black54,
-                  offset: Offset(2, 2),
-                  blurRadius: 4,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                const SizedBox(height: 220), // Space for profile image
-
-                // Name
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Text(
-                    currentMatch.name,
-                    style: const TextStyle(
-                      fontSize: 25,
-                      fontFamily: "assets/fonts/futura.ttf",
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-
-                // Description Box
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: isLoadingDescription
-                          ? const Center(
-                              child: CircularProgressIndicator(
-                                color: Colors.deepOrange,
-                              ),
-                            )
-                          : SingleChildScrollView(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Profile Insights:',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.deepOrange,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    currentDescription ??
-                                        'No description available',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black87,
-                                      height: 1.6,
-                                    ),
-                                    textAlign: TextAlign.justify,
-                                  ),
-                                ],
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-
-                // Gradient Flip Button (Same as Front)
-                const SizedBox(height: 15),
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF7B61FF), Color(0xFFFF477E)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: TextButton(
-                    onPressed: _flipCard,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text(
-                      "Flip Back",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-              ],
-            ),
+          Image.asset(
+            'assets/images/logo.png',
+            height: 45,
           ),
-
-          // Profile Image Positioned at the Top
-          Positioned(
-            top: 40,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: ClipOval(
-                child: Image.network(
-                  currentMatch.profilePicture,
-                  width: 180, // Same size as front
-                  height: 180,
-                  fit: BoxFit.cover,
-                ),
-              ),
+          const SizedBox(width: 10), // Add spacing between logo and text
+          const Text(
+            "MOBIUS",
+            style: TextStyle(
+              fontSize: 32,
+              fontFamily: 'Cinzel',
+              fontWeight: FontWeight.w500,
+              color: Colors.black,
             ),
           ),
         ],
       ),
-    );
-  }
+      actions: [
+        FutureBuilder<MatchmakingProfile>(
+          future: _fetchCurrentProfile(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ); // Show loading indicator while fetching data
+            }
+            if (snapshot.hasError || !snapshot.hasData) {
+              return IconButton(
+                icon: const Icon(Icons.error, size: 32, color: Colors.red),
+                onPressed: () {}, // Do nothing on error
+              );
+            }
 
-  // Update the _buildFrontCard method to use the modified AClogic without context
-  Widget _buildFrontCard(MatchmakingProfile currentMatch, double matchScore) {
-    String beta = (matchScore % 100).toStringAsFixed(2);
-    if (currentMatch.name == "peeeejaaayyy") {
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Background Card with Same Shape and Styling
-          Container(
-            width: 390,
-            height: 660,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.yellow,
-                width: 6,
-              ),
-              color: const Color.fromARGB(255, 46, 49, 73),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                const SizedBox(height: 240),
-                Text(
-                  "That's all for today!",
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.deepOrange,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 15),
-                Text(
-                  "You've seen all potential matches for now. Check back tomorrow for new matches!",
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 25),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context, 'matched'); // Returns to home page
-                  },
-                  child: const Text('Back to Home'),
-                ),
-              ],
-            ),
-          ),
-          // Profile Image Positioned Above Card
-
-          Positioned(
-            top: 40,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  width: 180,
-                  height: 180,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // Profile Image (Moved Up)
-
-        // Background Container
-        Container(
-          width: 390,
-          height: 660,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.yellow,
-              width: 6,
-            ),
-            color: Color.fromARGB(255, 46, 49, 73),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              // Added space since image moved up
-              const SizedBox(height: 240),
-              Text(
-                currentMatch.name,
-                style: TextStyle(
-                  fontSize: 25,
-                  fontFamily: "assets/fonts/futura.ttf",
-                  fontWeight: FontWeight.bold,
-                  color: const Color.fromARGB(255, 254, 254, 254),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                currentMatch.tagline,
-                style: TextStyle(
-                    fontSize: 14,
-                    color: const Color.fromARGB(255, 255, 255, 255),
-                    fontFamily: "assets/fonts/futura.ttf",
-                    fontWeight: FontWeight.normal,
-                    fontStyle: FontStyle.normal),
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 10),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFF7B61FF),
-                      Color(0xFFFF477E)
-                    ], // Purple to Pink
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: TextButton(
-                  onPressed: _flipCard,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30)),
-                    foregroundColor: Colors.white,
-                  ),
-                  child: Text(
-                    "Flip Me",
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+            final currentProfile = snapshot.data!;
+            return IconButton(
+              icon: const Icon(Icons.account_circle,
+                  size: 32, color: Colors.black),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProfileView(
+                      profile: currentProfile,
+                      onProfileUpdated: () => {},
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 40,
-                        child: Image.asset("assets/images/fire.png",
-                            height: 40, width: 40),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        "Match Score : $beta",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                            color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 40,
-                        child: Image.asset("assets/images/hourglass.png",
-                            height: 40, width: 40),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        Fetchyear(currentMatch),
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                            color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 40,
-                        child: Image.asset("assets/images/college.png",
-                            height: 40, width: 40),
-                      ),
-                      const SizedBox(width: 5),
-                      Flexible(
-                        child: Text(
-                          Fetchdept(currentMatch),
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                              color: Colors.white),
-                          softWrap: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      /// 🔴 PASS BUTTON
-                      ClipPath(
-                        clipper: CustomShapeClipper(),
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            DocumentReference matchRef = FirebaseFirestore
-                                .instance
-                                .collection('surveys')
-                                .doc(currentUserProfile!.userId);
-
-                            await matchRef.update({
-                              'Heleftwiped':
-                                  FieldValue.arrayUnion([currentMatch.userId])
-                            });
-                            _moveToNextMatch(accepted: false);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 40, vertical: 15),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(0)),
-                          ),
-                          child: const Text(
-                            "PASS",
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white),
-                          ),
-                        ),
-                      ),
-
-                      /// 🟢 ACCEPT BUTTON
-                      ClipPath(
-                        clipper: CustomShapeClipper(),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (currentUserProfile != null) {
-                              AClogic(currentUserProfile!, currentMatch);
-                              _moveToNextMatch(accepted: true);
-                              print(_isLastProfile);
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 40, vertical: 15),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(0)),
-                          ),
-                          child: const Text(
-                            "ACCEPT",
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white),
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                ],
-              ),
-            ],
-          ),
-        ),
-        Positioned(
-          top: 40,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: ClipOval(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Profile Image with Loading Indicator
-                  Image.network(
-                    currentMatch.profilePicture,
-                    width: 180, // Adjust size as needed
-                    height: 180,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) {
-                        return child; // Image is fully loaded
-                      }
-                      return SizedBox(
-                        width: 180,
-                        height: 180,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                    (loadingProgress.expectedTotalBytes ?? 1)
-                                : null,
-                            color: Colors.white, // Change color if needed
-                          ),
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 180,
-                        height: 180,
-                        color: Colors.grey[300], // Fallback color
-                        child: const Icon(Icons.person,
-                            size: 80, color: Colors.grey),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
+                );
+              },
+            );
+          },
         ),
       ],
     );
   }
-}
 
-class CustomShapeClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    Path path = Path();
-    path.moveTo(0, size.height * 0.2);
-    path.lineTo(size.width * 0.1, 0);
-    path.lineTo(size.width * 0.9, 0);
-    path.lineTo(size.width, size.height * 0.2);
-    path.lineTo(size.width, size.height * 0.8);
-    path.lineTo(size.width * 0.9, size.height);
-    path.lineTo(size.width * 0.1, size.height);
-    path.lineTo(0, size.height * 0.8);
-    path.close();
-    return path;
+// Fetches the current user's profile from Firestore
+  Future<MatchmakingProfile> _fetchCurrentProfile() async {
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      throw Exception("User not logged in");
+    }
+
+    final DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        .collection('surveys')
+        .doc(currentUser.uid)
+        .get();
+
+    if (!userDoc.exists) {
+      throw Exception("Profile not found");
+    }
+
+    return MatchmakingProfile.fromFirestore(userDoc);
   }
 
+  // Update the build method to use mounted check instead of _isDisposed
+
   @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+  Widget build(BuildContext context) {
+    // Show thank you page when no more profiles or flag is set
+    if (_showThankYouPage || potentialMatches.isEmpty) {
+      return Scaffold(
+        appBar: _buildAppBar(context),
+        bottomNavigationBar: _buildBottomBar(context),
+        backgroundColor: Colors.white,
+        body: _buildThankYouPage(),
+      );
+    }
+
+    if (_stackedProfiles.isEmpty && potentialMatches.isNotEmpty) {
+      _prepareCardStack();
+    }
+
+    // Original UI with correctly wired controls
+    return Scaffold(
+      appBar: _buildAppBar(context),
+      bottomNavigationBar: _buildBottomBar(context),
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          const SizedBox(height: 5),
+          // Card stack with state indicators
+          _buildCardStack(),
+          const SizedBox(height: 5),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            _buildCircularButton1(
+                icon: Icons.close,
+                onPressed: () {
+                  // Handle swipe left/dislike
+                  _handleSwipeLeft();
+                }),
+            const SizedBox(width: 20),
+            _buildCircularButton3(
+                icon: _isCardFlipped ? Icons.flip_to_front : Icons.flip_to_back,
+                onPressed: () {
+                  // ONLY flip the card here - no state change
+                  _flipCard();
+                }),
+            const SizedBox(width: 20),
+            _buildCircularButton2(
+                icon: Icons.check,
+                onPressed: () {
+                  // Handle swipe right/like
+                  _handleSwipeRight();
+                }),
+          ])
+        ],
+      ),
+    );
+  }
+
+  // Add methods to handle card actions
+  void _prepareCardStack() {
+    if (potentialMatches.isEmpty) {
+      setState(() {
+        _showThankYouPage = true;
+      });
+      return;
+    }
+
+    _stackedProfiles = [];
+    final int totalCards = potentialMatches.length;
+
+    // Always show at least one card, but up to 3 if available
+    int startIndex = math.max(0, totalCards - 3);
+
+    for (int i = startIndex; i < totalCards; i++) {
+      _stackedProfiles.add(potentialMatches[i]);
+    }
+  }
+
+// Use this improved card stack builder
+
+// Helper method to get score for a profile
+  double _getScoreForProfile(MatchmakingProfile profile) {
+    for (var entry in rankedMatches) {
+      if (entry.key.userId == profile.userId) {
+        return entry.value;
+      }
+    }
+    return 0.0;
+  }
+
+// Update swipe handlers to use animation
+
+  // Add a method to build the thank you page
+  Widget _buildThankYouPage() {
+    return Center(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.favorite,
+              color: Colors.deepPurpleAccent,
+              size: 100,
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              "Thank You!",
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepPurpleAccent,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "You've seen all potential matches for now.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Check back later for new matches!",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 40),
+            ElevatedButton(
+              onPressed: () {
+                // Navigate to MyMatchesView or another screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MyMatchesView(
+                      n1: widget.n1,
+                      n2: widget.n2,
+                      n3: widget.n3,
+                      n4: widget.n4,
+                      n5: widget.n5,
+                      n6: widget.n6,
+                      n7: widget.n7,
+                      n8: widget.n8,
+                      n9: widget.n9,
+                      n10: widget.n10,
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                backgroundColor: Colors.deepPurpleAccent,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text(
+                "View My Matches",
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Update buildFrontCard method to handle swipe gestures
+
+// Helper method to create consistent circular buttons
+  Widget _buildCircularButton1({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.red,
+      ),
+      child: IconButton(
+        icon: Icon(
+          icon,
+          color: Colors.white,
+          size: 35,
+        ),
+        onPressed: onPressed,
+        padding: const EdgeInsets.all(12),
+      ),
+    );
+  }
+
+  Widget _buildCircularButton3({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        border: Border.all(
+          color: Colors.deepPurpleAccent,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(
+          icon,
+          color: Colors.deepPurpleAccent,
+          size: 24,
+        ),
+        onPressed: onPressed,
+        padding: const EdgeInsets.all(12),
+      ),
+    );
+  }
+
+  Widget _buildCircularButton2({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.deepPurpleAccent,
+      ),
+      child: IconButton(
+        icon: Icon(
+          icon,
+          color: Colors.white,
+          size: 35,
+        ),
+        onPressed: onPressed,
+        padding: const EdgeInsets.all(12),
+      ),
+    );
+  }
 }

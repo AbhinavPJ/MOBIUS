@@ -354,42 +354,28 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0, // Removes shadow for a clean look
+        centerTitle: true,
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(width: 40),
             Image.asset(
-              'assets/images/logo.png',
+              'assets/images/logo.png', // Replace with your logo path
               height: 40,
             ),
+            const SizedBox(width: 10),
             const Text(
-              "MOBIUS",
+              "MOBIUS", // Replace with your app name
               style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color.fromARGB(255, 179, 255, 1),
+                fontSize: 32,
+                fontFamily: 'Cinzel',
+                fontWeight: FontWeight.w500,
+                color: Colors.black,
               ),
             ),
           ],
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back,
-              color: Colors.white), // Change color here
-          onPressed: () => Navigator.pop(context),
-        ),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color.fromRGBO(0, 0, 0, 1),
-                Color.fromRGBO(0, 0, 0, 1),
-              ],
-            ),
-          ),
-        ),
-        elevation: 0,
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -397,8 +383,8 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromARGB(255, 0, 0, 0),
-              Color.fromARGB(255, 0, 0, 0),
+              Color.fromARGB(255, 255, 255, 255),
+              Color.fromARGB(255, 255, 255, 255),
             ],
           ),
         ),
@@ -418,35 +404,52 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
   Widget _buildEmptyState() {
     return Center(
       child: Container(
-        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(30),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.purple.shade50,
+              Colors.purple.shade100,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.purple.shade200.withOpacity(0.5),
+              spreadRadius: 2,
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.favorite_border,
-              size: 64,
-              color: Colors.pinkAccent,
+              Icons.check_circle_outline,
+              size: 80,
+              color: Colors.purple.shade300,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
-              "No matches yet",
+              "Nothing left to review",
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Colors.purple.shade800,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
-              "Keep swiping to find your perfect match!",
+              "You've reviewed all your current matches. Keep exploring!",
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.white70,
+                color: Colors.purple.shade600,
               ),
             ),
           ],
@@ -471,29 +474,24 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFD700), width: 2),
-        gradient: const LinearGradient(
+        border: Border.all(
+            color: const Color.fromARGB(189, 114, 92, 174), width: 2),
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color.fromARGB(255, 46, 49, 73),
-            Color.fromARGB(255, 35, 38, 59)
+            const Color(0xFFE3F2FD), // Soft pastel blue
+            const Color(0xFFF3E5F5), // Very soft lavender
+            const Color(0xFFFAFAFA), // Almost white
           ],
+          stops: [0.0, 0.5, 1.0],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black,
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(15),
         child: ExpansionTile(
-          collapsedIconColor: Colors.white,
-          iconColor: Colors.yellow,
+          collapsedIconColor: Colors.black,
+          iconColor: Colors.black,
           backgroundColor: Colors.transparent,
           collapsedBackgroundColor: Colors.transparent,
           title: Row(
@@ -501,8 +499,8 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
               Hero(
                 tag: 'match-${match.userId}',
                 child: CircleAvatar(
-                  radius: 35,
-                  backgroundColor: Colors.yellow,
+                  radius: 34,
+                  backgroundColor: const Color.fromARGB(189, 114, 92, 174),
                   child: CircleAvatar(
                     radius: 32,
                     backgroundImage: match.profilePicture.isNotEmpty
@@ -525,7 +523,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Colors.black,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -540,7 +538,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
                         Text(
                           "Match Score: ${(match.matchScore % 200).toStringAsFixed(1)}%",
                           style: const TextStyle(
-                              fontSize: 14, color: Colors.white70),
+                              fontSize: 14, color: Colors.black),
                         ),
                       ],
                     ),
@@ -556,9 +554,14 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFFE3F2FD), // Soft pastel blue
+                    const Color(0xFFF3E5F5), // Very soft lavender
+                    const Color(0xFFFAFAFA), // Almost white
+                  ],
+                  stops: [0.0, 0.5, 1.0],
                 ),
               ),
               child: Column(
@@ -589,7 +592,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white),
+                  color: Colors.black),
             ),
             const SizedBox(height: 10),
             RatingBar.builder(
@@ -750,7 +753,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
         'n10': 1.0, // Music genres
       };
 
-      final double baseLearningRate = 0.01; // 5% adjustment potential
+      final double baseLearningRate = 0; // 5% adjustment potential
 
       // New method for updating coefficients
       print(coeffs);

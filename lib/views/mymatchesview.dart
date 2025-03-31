@@ -338,51 +338,38 @@ class _MyMatchesViewState extends State<MyMatchesView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0, // Removes shadow for a clean look
+        centerTitle: true,
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(width: 40),
             Image.asset(
-              'assets/images/logo.png',
+              'assets/images/logo.png', // Replace with your logo path
               height: 40,
             ),
+            const SizedBox(width: 10),
             const Text(
-              "MOBIUS",
+              "MOBIUS", // Replace with your app name
               style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color.fromARGB(255, 179, 255, 1),
+                fontSize: 32,
+                fontFamily: 'Cinzel',
+                fontWeight: FontWeight.w500,
+                color: Colors.black,
               ),
             ),
           ],
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back,
-              color: Colors.white), // Change color here
-          onPressed: () => Navigator.pop(context),
-        ),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color.fromRGBO(0, 0, 0, 1),
-                Color.fromRGBO(0, 0, 0, 1),
-              ],
-            ),
-          ),
-        ),
-        elevation: 0,
       ),
+      backgroundColor: Color.fromRGBO(229, 229, 229, 1),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromARGB(255, 0, 0, 0),
-              Color.fromARGB(255, 0, 0, 0),
+              Color.fromARGB(255, 255, 255, 255),
+              Color.fromARGB(255, 255, 255, 255),
             ],
           ),
         ),
@@ -402,35 +389,52 @@ class _MyMatchesViewState extends State<MyMatchesView> {
   Widget _buildEmptyState() {
     return Center(
       child: Container(
-        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(30),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.purple.shade50,
+              Colors.purple.shade100,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.purple.shade200.withOpacity(0.5),
+              spreadRadius: 2,
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.favorite_border,
-              size: 64,
-              color: Colors.pinkAccent,
+              Icons.favorite_border_outlined,
+              size: 80,
+              color: Colors.purple.shade300,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
-              "No matches yet",
+              "No Matches Yet",
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Colors.purple.shade800,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
-              "Keep swiping to find your perfect match!",
+              "Keep swiping to find your perfect match! Your connection is just a swipe away.",
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.white70,
+                color: Colors.purple.shade600,
               ),
             ),
           ],
@@ -455,29 +459,24 @@ class _MyMatchesViewState extends State<MyMatchesView> {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFD700), width: 2),
+        border: Border.all(
+            color: const Color.fromARGB(255, 120, 186, 216), width: 2),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color.fromARGB(255, 46, 49, 73),
-            Color.fromARGB(255, 35, 38, 59),
+            const Color(0xFFE3F2FD), // Soft pastel blue
+            const Color(0xFFF3E5F5), // Very soft lavender
+            const Color(0xFFFAFAFA), // Almost white
           ],
+          stops: [0.0, 0.5, 1.0],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black,
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(15),
         child: ExpansionTile(
-          collapsedIconColor: Colors.white,
-          iconColor: Colors.yellow,
+          collapsedIconColor: Colors.black,
+          iconColor: Colors.green,
           backgroundColor: Colors.transparent,
           collapsedBackgroundColor: Colors.transparent,
           title: Row(
@@ -485,8 +484,8 @@ class _MyMatchesViewState extends State<MyMatchesView> {
               Hero(
                 tag: 'match-${match.userId}',
                 child: CircleAvatar(
-                  radius: 35,
-                  backgroundColor: Colors.yellow,
+                  radius: 34,
+                  backgroundColor: const Color.fromARGB(189, 114, 92, 174),
                   child: CircleAvatar(
                     radius: 32,
                     backgroundImage: match.profilePicture.isNotEmpty
@@ -509,7 +508,7 @@ class _MyMatchesViewState extends State<MyMatchesView> {
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Colors.black,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -525,7 +524,7 @@ class _MyMatchesViewState extends State<MyMatchesView> {
                           "Match Score: ${(match.matchScore % 200).toStringAsFixed(1)}%",
                           style: const TextStyle(
                             fontSize: 14,
-                            color: Colors.white70,
+                            color: Colors.black,
                           ),
                         ),
                       ],
@@ -542,18 +541,20 @@ class _MyMatchesViewState extends State<MyMatchesView> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                   colors: [
-                    Colors.transparent,
-                    Colors.black,
+                    const Color(0xFFE3F2FD), // Soft pastel blue
+                    const Color(0xFFF3E5F5), // Very soft lavender
+                    const Color(0xFFFAFAFA), // Almost white
                   ],
+                  stops: [0.0, 0.5, 1.0],
                 ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Divider(color: Colors.white30),
+                  const Divider(color: Colors.grey),
                   const SizedBox(height: 8),
                   _buildContactInfoRow(
                       Icons.phone, "Phone", match.contactNumber),
@@ -602,7 +603,7 @@ class _MyMatchesViewState extends State<MyMatchesView> {
   Widget _buildContactInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, color: Colors.yellowAccent, size: 20),
+        Icon(icon, color: Colors.green, size: 20),
         const SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -611,7 +612,7 @@ class _MyMatchesViewState extends State<MyMatchesView> {
               label,
               style: const TextStyle(
                 fontSize: 14,
-                color: Colors.white70,
+                color: Colors.black,
               ),
             ),
             Text(
@@ -619,7 +620,7 @@ class _MyMatchesViewState extends State<MyMatchesView> {
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: Colors.black,
               ),
             ),
           ],

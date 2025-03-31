@@ -1180,7 +1180,7 @@ PODS:
     - Firebase/Analytics (= 11.8.0)
     - firebase_core
     - Flutter
-  - firebase_auth (5.4.1):
+  - firebase_auth (5.5.1):
     - Firebase/Auth (= 11.8.0)
     - firebase_core
     - Flutter
@@ -1432,6 +1432,9 @@ PODS:
     - FlutterMacOS
   - PromisesObjC (2.4.0)
   - RecaptchaInterop (100.0.0)
+  - shared_preferences_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - sqflite_darwin (0.0.4):
     - Flutter
     - FlutterMacOS
@@ -1450,6 +1453,7 @@ DEPENDENCIES:
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - just_audio (from `.symlinks/plugins/just_audio/darwin`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
+  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
@@ -1505,6 +1509,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/just_audio/darwin"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
+  shared_preferences_foundation:
+    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   sqflite_darwin:
     :path: ".symlinks/plugins/sqflite_darwin/darwin"
   url_launcher_ios:
@@ -1517,7 +1523,7 @@ SPEC CHECKSUMS:
   cloud_firestore: e61acbf808607d2c88ee32b00cd3aec027b38b3c
   Firebase: d80354ed7f6df5f9aca55e9eb47cc4b634735eaf
   firebase_analytics: 4e93dbe66872104d28ae9750fec1800e1fd66858
-  firebase_auth: 82661cbfeb72c9050321884a5ff422412c68a4f3
+  firebase_auth: 9ebbd83276bf977dea1c74dfc199acf9d2a2f42f
   firebase_core: 8d552814f6c01ccde5d88939fced4ec26f2f5510
   firebase_messaging: 8b96a4f09841c15a16b96973ef5c3dcfc1a064e4
   firebase_storage: 4ed3dade149f74651bdae3536b68d403c364591c
@@ -1548,6 +1554,7 @@ SPEC CHECKSUMS:
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RecaptchaInterop: 7d1a4a01a6b2cb1610a47ef3f85f0c411434cb21
+  shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   url_launcher_ios: 694010445543906933d732453a59da0a173ae33d
 

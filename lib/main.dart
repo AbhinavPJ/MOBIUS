@@ -2,9 +2,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_application_2/views/card_provider.dart';
 import 'package:flutter_application_2/views/register_view.dart';
 import 'package:flutter_application_2/views/verifyemailview.dart';
-import 'package:flutter_application_2/views/welcome.dart';
+import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'views/survey.dart';
 import 'views/loginview.dart';
@@ -14,7 +15,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CardProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -26,32 +34,36 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       home: const AuthWrapper(),
       routes: {
-        '/home': (context) => FutureBuilder<Map<String, double>>(
-              future: _fetchCoefficients(),
-              builder: (context, coefSnapshot) {
-                if (coefSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+        '/home': (context) => ChangeNotifierProvider(
+              create: (_) => CardProvider(),
+              child: FutureBuilder<Map<String, double>>(
+                future: MyApp._fetchCoefficients(),
+                builder: (context, coefSnapshot) {
+                  if (coefSnapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                if (coefSnapshot.hasData) {
-                  final coefficients = coefSnapshot.data!;
-                  return MatchmakingScreen(
-                    flag: false,
-                    n1: coefficients["n1"]!,
-                    n2: coefficients["n2"]!,
-                    n3: coefficients["n3"]!,
-                    n4: coefficients["n4"]!,
-                    n5: coefficients["n5"]!,
-                    n6: coefficients["n6"]!,
-                    n7: coefficients["n7"]!,
-                    n8: coefficients["n8"]!,
-                    n9: coefficients["n9"]!,
-                    n10: coefficients["n10"]!,
-                  );
-                }
+                  if (coefSnapshot.hasData) {
+                    final coefficients = coefSnapshot.data!;
+                    return MatchmakingScreen(
+                      flag: false,
+                      n1: coefficients["n1"]!,
+                      n2: coefficients["n2"]!,
+                      n3: coefficients["n3"]!,
+                      n4: coefficients["n4"]!,
+                      n5: coefficients["n5"]!,
+                      n6: coefficients["n6"]!,
+                      n7: coefficients["n7"]!,
+                      n8: coefficients["n8"]!,
+                      n9: coefficients["n9"]!,
+                      n10: coefficients["n10"]!,
+                    );
+                  }
 
-                return const Center(child: Text("Failed to load coefficients"));
-              },
+                  return const Center(
+                      child: Text("Failed to load coefficients"));
+                },
+              ),
             ),
         '/login': (context) => const LoginView(),
         '/survey': (context) => const SurveyView(),
@@ -203,70 +215,70 @@ class AuthWrapper extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasData && snapshot.data != null) {
-          final user = snapshot.data!;
-          if (!user.emailVerified) {
-            user.sendEmailVerification();
-            return const VerifyEmailView();
+  Widget build(BuildContext context) => ChangeNotifierProvider(
+      create: (context) => CardProvider(),
+      child: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
           }
 
-          return FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance
-                .collection("surveys")
-                .doc(user.uid)
-                .get(),
-            builder: (context, surveySnapshot) {
-              if (surveySnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          if (snapshot.hasData && snapshot.data != null) {
+            final user = snapshot.data!;
+            if (!user.emailVerified) {
+              user.sendEmailVerification();
+              return const VerifyEmailView();
+            }
 
-              if (surveySnapshot.hasData && surveySnapshot.data!.exists) {
-                return FutureBuilder<Map<String, double>>(
-                  future: _fetchCoefficients(),
-                  builder: (context, coefSnapshot) {
-                    if (coefSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+            return FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection("surveys")
+                  .doc(user.uid)
+                  .get(),
+              builder: (context, surveySnapshot) {
+                if (surveySnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                    if (coefSnapshot.hasData) {
-                      final coefficients = coefSnapshot.data!;
-                      return MatchmakingScreen(
-                        flag: false,
-                        n1: coefficients["n1"]!,
-                        n2: coefficients["n2"]!,
-                        n3: coefficients["n3"]!,
-                        n4: coefficients["n4"]!,
-                        n5: coefficients["n5"]!,
-                        n6: coefficients["n6"]!,
-                        n7: coefficients["n7"]!,
-                        n8: coefficients["n8"]!,
-                        n9: coefficients["n9"]!,
-                        n10: coefficients["n10"]!,
-                      );
-                    }
+                if (surveySnapshot.hasData && surveySnapshot.data!.exists) {
+                  return FutureBuilder<Map<String, double>>(
+                    future: _fetchCoefficients(),
+                    builder: (context, coefSnapshot) {
+                      if (coefSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                    return const Center(
-                        child: Text("Failed to load coefficients"));
-                  },
-                );
-              } else {
-                return const SurveyView();
-              }
-            },
-          );
-        }
+                      if (coefSnapshot.hasData) {
+                        final coefficients = coefSnapshot.data!;
+                        return MatchmakingScreen(
+                          flag: false,
+                          n1: coefficients["n1"]!,
+                          n2: coefficients["n2"]!,
+                          n3: coefficients["n3"]!,
+                          n4: coefficients["n4"]!,
+                          n5: coefficients["n5"]!,
+                          n6: coefficients["n6"]!,
+                          n7: coefficients["n7"]!,
+                          n8: coefficients["n8"]!,
+                          n9: coefficients["n9"]!,
+                          n10: coefficients["n10"]!,
+                        );
+                      }
 
-        return const WelcomeScreen();
-      },
-    );
-  }
+                      return const Center(
+                          child: Text("Failed to load coefficients"));
+                    },
+                  );
+                } else {
+                  return const SurveyView();
+                }
+              },
+            );
+          }
+
+          return const RegisterView();
+        },
+      ));
 }

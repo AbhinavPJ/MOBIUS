@@ -329,7 +329,12 @@ Business and Consulting club:Business and consulting club
       setState(() => _currentPage = 2);
       return;
     }
-
+    if (_gender == null) {
+      _showSnackBar("Please enter your gender", isError: true);
+      setState(() {
+        _currentPage = 1;
+      });
+    }
     if (_personality == null || _hangoutSpot == null || _popularity == null) {
       _showSnackBar("Please fill all personality questions", isError: true);
       setState(() => _currentPage = 3);
@@ -399,8 +404,7 @@ Business and Consulting club:Business and consulting club
 
       // ✅ Navigate to matchmaking screen
       if (mounted) {
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil('/matchmaking', (route) => false);
+        Navigator.pushNamed(context, '/home');
       }
     } catch (e) {
       _showSnackBar("Error submitting survey: $e", isError: true);
@@ -410,91 +414,116 @@ Business and Consulting club:Business and consulting club
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Color.fromRGBO(165, 18, 178, 0.604),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        padding: const EdgeInsets.all(20),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromRGBO(0, 0, 0, 1),
-              Color.fromRGBO(0, 0, 0, 1),
+              Color.fromRGBO(165, 18, 178, 0.604),
+              Color.fromRGBO(189, 148, 215, 1),
             ],
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-
-              // App Logo and Title
-              Row(
-                mainAxisSize: MainAxisSize.min,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 1,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  const Text(
+                    "Mobius Survey",
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontFamily: 'PlayfairDisplay-Regular',
+                      fontStyle: FontStyle.italic,
+                      fontWeight: FontWeight.normal,
+                      color: Colors.white,
+                    ),
+                  ),
                   Image.asset(
                     'assets/images/logo.png',
                     height: 80,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(height: 6),
                   const Text(
-                    "MOBIUS",
+                    "Complete your profile to start matching",
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 29,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 179, 255, 0),
+                      fontSize: 14,
+                      color: Color.fromARGB(225, 255, 255, 255),
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ],
               ),
-
-              const SizedBox(height: 20),
-
-              // Progress indicator
-              LinearProgressIndicator(
-                value: (_currentPage + 1) / 5,
-                backgroundColor: Colors.white24,
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-
-              const SizedBox(height: 10),
-              Text(
-                "Page ${_currentPage + 1} of 5",
-                style: const TextStyle(color: Colors.white70),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Main survey content
-              Expanded(
-                child: SingleChildScrollView(
-                  child: _buildSurveyPage(_currentPage),
-                ),
-              ),
-
-              // Navigation buttons
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            ),
+            Expanded(
+              flex: 3,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
                   children: [
-                    if (_currentPage > 0)
-                      _buildButton(
-                          "Back", Colors.white, Colors.black, _prevPage)
-                    else
-                      const SizedBox(width: 80),
-                    _buildButton(
-                      _currentPage == 4 ? "Submit" : "Next",
-                      Colors.white,
-                      Colors.black,
-                      _handleNextPressed, // Handles navigation with conditions
+                    // Progress indicator
+                    LinearProgressIndicator(
+                      value: (_currentPage + 1) / 5,
+                      backgroundColor: Colors.white24,
+                      valueColor:
+                          const AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      "Page ${_currentPage + 1} of 5",
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Main survey content
+                    Expanded(
+                      child: SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        child: _buildSurveyPage(_currentPage),
+                      ),
+                    ),
+
+                    // Navigation buttons
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          if (_currentPage > 0)
+                            _buildButton(
+                                "Back", Colors.white, Colors.black, _prevPage)
+                          else
+                            const SizedBox(width: 80),
+                          _buildButton(
+                            _currentPage == 4 ? "Submit" : "Next",
+                            Colors.white,
+                            Colors.black,
+                            _handleNextPressed,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -532,22 +561,24 @@ Business and Consulting club:Business and consulting club
 
   Widget _buildButton(
       String text, Color bgColor, Color textColor, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: bgColor,
-        foregroundColor: textColor,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(25),
+    return SizedBox(
+      width: 150,
+      height: 48,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bgColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
         ),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
+        onPressed: onPressed,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
@@ -1140,28 +1171,25 @@ Business and Consulting club:Business and consulting club
 
   Widget _buildTextField(String hint, TextEditingController controller,
       {int maxLines = 1, FocusNode? focusNode, Function(String)? onSubmitted}) {
-    return TextField(
-      controller: controller,
-      style: const TextStyle(color: Colors.white),
-      maxLines: maxLines,
-      focusNode: focusNode,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(color: Colors.white),
+        maxLines: maxLines,
+        focusNode: focusNode,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.white),
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.2),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide.none,
+          ),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.white, width: 1),
-        ),
+        onSubmitted: onSubmitted,
       ),
-      onSubmitted: onSubmitted,
     );
   }
 
@@ -1170,12 +1198,16 @@ Business and Consulting club:Business and consulting club
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(color: Colors.white, fontSize: 16)),
+        Text(title,
+            style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16)),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Colors.white.withOpacity(0.2),
             borderRadius: BorderRadius.circular(16),
           ),
           child: DropdownButtonHideUnderline(

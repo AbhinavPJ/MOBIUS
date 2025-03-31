@@ -13,7 +13,7 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: const Color.fromRGBO(165, 18, 178, 0.604),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -28,8 +28,8 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromRGBO(0, 0, 0, 1),
-              Color.fromRGBO(10, 10, 10, 1),
+              Color.fromRGBO(165, 18, 178, 0.604),
+              Color.fromRGBO(189, 148, 215, 1),
             ],
           ),
         ),
@@ -41,19 +41,18 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  const Text(
+                    "MOBIUS", // Replace with your app name
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontFamily: 'Cinzel',
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black,
+                    ),
+                  ),
                   Image.asset(
                     'assets/images/logo.png',
                     height: 120,
-                  ),
-                  const SizedBox(height: 15),
-                  const Text(
-                    "MOBIUS",
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 179, 255, 0),
-                      letterSpacing: 1.5,
-                    ),
                   ),
                   const SizedBox(height: 6),
                   const Text(
@@ -61,7 +60,7 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white70,
+                      color: Colors.white,
                       fontWeight: FontWeight.w400,
                     ),
                   ),

@@ -222,146 +222,174 @@ Business and Consulting club:Business and consulting club
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 46, 49, 73),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          "Edit Profile",
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color.fromRGBO(165, 18, 178, 0.604),
+              Color.fromRGBO(189, 148, 215, 1),
+            ],
           ),
         ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Centered profile image with loading indicator
-            Center(
-              child: Container(
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.grey[300], // Placeholder color
-                ),
-                child: ClipOval(
-                  child: profilepictureurl.isNotEmpty
-                      ? Image.network(
-                          profilepictureurl,
-                          width: 180,
-                          height: 180,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) {
-                              return child;
-                            }
-                            return Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes !=
-                                        null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
-                                color: Colors.white,
-                              ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Center(
-                              child: Icon(
-                                Icons.error_outline,
-                                size: 40,
-                                color: Colors.red,
-                              ),
-                            );
-                          },
-                        )
-                      : const Center(
-                          child: Icon(
-                            Icons.person,
-                            size: 80,
-                            color: Colors.white54,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      const Expanded(
+                        child: Center(
+                          child: Text(
+                            "Edit Profile",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            _buildSingleSelectField(
-              label: "Hangout Spot",
-              isEditing: _isEditingHangout,
-              options: _hangoutSpots,
-              selectedValue: _selectedHangoutSpot,
-              onEdit: () {
-                if (_isEditingHangout) {
-                  _saveProfile('hangout_spot', _selectedHangoutSpot);
-                }
-                setState(() => _isEditingHangout = !_isEditingHangout);
-              },
-              onSelectionChanged: (newSelection) => setState(() {
-                _selectedHangoutSpot = newSelection;
-              }),
-            ),
-            _buildMultiSelectField(
-                "Clubs", _isEditingClubs, _allClubs, _selectedClubs, () {
-              if (_isEditingClubs) {
-                _saveProfile('clubs', _selectedClubs);
-              }
-              setState(() => _isEditingClubs = !_isEditingClubs);
-            }),
-            _buildMultiSelectField("Movie Genres", _isEditingMovieGenres,
-                _allMovieGenres, _selectedMovieGenres, () {
-              if (_isEditingMovieGenres) {
-                _saveProfile('movie_genres', _selectedMovieGenres);
-              }
-              setState(() => _isEditingMovieGenres = !_isEditingMovieGenres);
-            }),
-            _buildMultiSelectField("Music Genres", _isEditingMusicGenres,
-                _allMusicGenres, _selectedMusicGenres, () {
-              if (_isEditingMusicGenres) {
-                _saveProfile('music_genres', _selectedMusicGenres);
-              }
-              setState(() => _isEditingMusicGenres = !_isEditingMusicGenres);
-            }),
-            _buildMultiSelectField(
-                "Sports", _isEditingSports, _allSports, _selectedSports, () {
-              if (_isEditingSports) {
-                _saveProfile('sports', _selectedSports);
-              }
-              setState(() => _isEditingSports = !_isEditingSports);
-            }),
-            const SizedBox(height: 20),
 
-            // Logout Button
-            Center(
-              child: ElevatedButton(
-                onPressed: () async {
+                // Centered profile image with loading indicator
+                Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 4),
+                  ),
+                  child: ClipOval(
+                    child: profilepictureurl.isNotEmpty
+                        ? Image.network(
+                            profilepictureurl,
+                            width: 180,
+                            height: 180,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) {
+                                return child;
+                              }
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes !=
+                                          null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  color: Colors.white,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Center(
+                                child: Icon(
+                                  Icons.person,
+                                  size: 80,
+                                  color: Colors.white,
+                                ),
+                              );
+                            },
+                          )
+                        : const Center(
+                            child: Icon(
+                              Icons.person,
+                              size: 80,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Profile Edit Sections
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: Column(
+                    children: [
+                      _buildSingleSelectField(
+                        label: "Hangout Spot",
+                        isEditing: _isEditingHangout,
+                        options: _hangoutSpots,
+                        selectedValue: _selectedHangoutSpot,
+                        onEdit: () {
+                          if (_isEditingHangout) {
+                            _saveProfile('hangout_spot', _selectedHangoutSpot);
+                          }
+                          setState(
+                              () => _isEditingHangout = !_isEditingHangout);
+                        },
+                        onSelectionChanged: (newSelection) => setState(() {
+                          _selectedHangoutSpot = newSelection;
+                        }),
+                      ),
+                      _buildMultiSelectField(
+                          "Clubs", _isEditingClubs, _allClubs, _selectedClubs,
+                          () {
+                        if (_isEditingClubs) {
+                          _saveProfile('clubs', _selectedClubs);
+                        }
+                        setState(() => _isEditingClubs = !_isEditingClubs);
+                      }),
+                      _buildMultiSelectField(
+                          "Movie Genres",
+                          _isEditingMovieGenres,
+                          _allMovieGenres,
+                          _selectedMovieGenres, () {
+                        if (_isEditingMovieGenres) {
+                          _saveProfile('movie_genres', _selectedMovieGenres);
+                        }
+                        setState(() =>
+                            _isEditingMovieGenres = !_isEditingMovieGenres);
+                      }),
+                      _buildMultiSelectField(
+                          "Music Genres",
+                          _isEditingMusicGenres,
+                          _allMusicGenres,
+                          _selectedMusicGenres, () {
+                        if (_isEditingMusicGenres) {
+                          _saveProfile('music_genres', _selectedMusicGenres);
+                        }
+                        setState(() =>
+                            _isEditingMusicGenres = !_isEditingMusicGenres);
+                      }),
+                      _buildMultiSelectField("Sports", _isEditingSports,
+                          _allSports, _selectedSports, () {
+                        if (_isEditingSports) {
+                          _saveProfile('sports', _selectedSports);
+                        }
+                        setState(() => _isEditingSports = !_isEditingSports);
+                      }),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                // Logout Button
+                _buildButton("Logout", Colors.white, Colors.black, () async {
                   await FirebaseAuth.instance.signOut();
                   Navigator.of(context)
                       .pushNamedAndRemoveUntil('/login', (route) => false);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  textStyle: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                child: const Text("Logout"),
-              ),
+                }),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -382,7 +410,7 @@ Business and Consulting club:Business and consulting club
             const Spacer(),
             IconButton(
               icon: Icon(isEditing ? Icons.check : Icons.edit,
-                  color: Colors.blue),
+                  color: Colors.white),
               onPressed: onEdit,
             ),
           ],
@@ -390,8 +418,16 @@ Business and Consulting club:Business and consulting club
         isEditing
             ? Wrap(
                 spacing: 8.0,
+                runSpacing: 8.0,
                 children: options
                     .map((option) => FilterChip(
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          selectedColor: Colors.white,
+                          labelStyle: TextStyle(
+                            color: selectedValues.contains(option)
+                                ? Colors.black
+                                : Colors.black,
+                          ),
                           label: Text(option),
                           selected: selectedValues.contains(option),
                           onSelected: (selected) {
@@ -408,6 +444,31 @@ Business and Consulting club:Business and consulting club
                 style: const TextStyle(fontSize: 16, color: Colors.white)),
         const SizedBox(height: 16),
       ],
+    );
+  }
+
+  Widget _buildButton(
+      String text, Color bgColor, Color textColor, VoidCallback onPressed) {
+    return SizedBox(
+      width: 200,
+      height: 48,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: bgColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+        ),
+        onPressed: onPressed,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
     );
   }
 
@@ -432,23 +493,40 @@ Business and Consulting club:Business and consulting club
             const Spacer(),
             IconButton(
               icon: Icon(isEditing ? Icons.check : Icons.edit,
-                  color: Colors.blue),
+                  color: Colors.white),
               onPressed: onEdit,
             ),
           ],
         ),
         isEditing
-            ? DropdownButtonFormField<String>(
-                value: selectedValue,
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-                items: options.map((option) {
-                  return DropdownMenuItem(value: option, child: Text(option));
-                }).toList(),
-                onChanged: (newValue) {
-                  if (newValue != null) {
-                    onSelectionChanged(newValue);
-                  }
-                },
+            ? Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: DropdownButtonFormField<String>(
+                  dropdownColor: const Color.fromRGBO(165, 18, 178, 0.604),
+                  value: selectedValue,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                  style: const TextStyle(color: Colors.white),
+                  items: options.map((option) {
+                    return DropdownMenuItem(
+                        value: option,
+                        child: Text(
+                          option,
+                          style: const TextStyle(color: Colors.white),
+                        ));
+                  }).toList(),
+                  onChanged: (newValue) {
+                    if (newValue != null) {
+                      onSelectionChanged(newValue);
+                    }
+                  },
+                ),
               )
             : Text(selectedValue,
                 style: const TextStyle(fontSize: 16, color: Colors.white)),

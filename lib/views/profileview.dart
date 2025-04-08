@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_2/auth/keys.dart';
 import 'package:flutter_application_2/views/matchmaking.dart';
 import 'package:groq/groq.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class ProfileView extends StatefulWidget {
   final MatchmakingProfile profile;
@@ -22,17 +25,21 @@ class ProfileView extends StatefulWidget {
 class _ProfileViewState extends State<ProfileView> {
   late Groq groq;
   bool isApiReady = false;
+  bool _isEditingName = false;
   bool _isEditingHangout = false;
   bool _isEditingClubs = false;
   bool _isEditingMovieGenres = false;
   bool _isEditingMusicGenres = false;
   bool _isEditingSports = false;
+  bool _isUploadingImage = false;
   String profilepictureurl = "";
+  late TextEditingController _nameController;
   List<String> _selectedClubs = [];
   List<String> _selectedMovieGenres = [];
   List<String> _selectedMusicGenres = [];
   List<String> _selectedSports = [];
   late String _selectedHangoutSpot;
+  final ImagePicker _picker = ImagePicker();
 
   final List<String> _hangoutSpots = [
     "CCD",
@@ -111,6 +118,7 @@ class _ProfileViewState extends State<ProfileView> {
   void initState() {
     super.initState();
     initializeGroq();
+    _nameController = TextEditingController(text: widget.profile.name);
     _selectedClubs = List<String>.from(widget.profile.clubs);
     _selectedMovieGenres = List<String>.from(widget.profile.movieGenres);
     _selectedMusicGenres = List<String>.from(widget.profile.musicGenres);
@@ -119,25 +127,89 @@ class _ProfileViewState extends State<ProfileView> {
     _selectedSports = List<String>.from(widget.profile.sports);
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      setState(() {
+        _isUploadingImage = true;
+      });
+
+      final XFile? pickedFile =
+          await _picker.pickImage(source: ImageSource.gallery);
+
+      if (pickedFile == null) {
+        setState(() {
+          _isUploadingImage = false;
+        });
+        return;
+      }
+
+      // Upload to Firebase Storage
+      final Reference storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_pictures')
+          .child('${widget.profile.userId}.jpg');
+
+      final File imageFile = File(pickedFile.path);
+      final UploadTask uploadTask = storageRef.putFile(
+        imageFile,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+
+      // Get download URL after upload completes
+      final TaskSnapshot snapshot = await uploadTask;
+      final String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      // Update Firestore with new profile picture URL
+      await _saveProfile('profile_picture', downloadUrl);
+
+      setState(() {
+        profilepictureurl = downloadUrl;
+        _isUploadingImage = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isUploadingImage = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error uploading image: $e')),
+      );
+    }
+  }
+
   Future<void> _saveProfile(String field, dynamic value) async {
     try {
       await FirebaseFirestore.instance
           .collection('surveys')
           .doc(widget.profile.userId)
           .update({field: value});
-      String new_description = await _generateProfileDescription(
-          widget.profile.name,
-          widget.profile.gender,
-          _selectedClubs,
-          _selectedSports,
-          _selectedMovieGenres,
-          _selectedMusicGenres,
-          _selectedHangoutSpot,
-          widget.profile.relationshipType);
-      await FirebaseFirestore.instance
-          .collection('surveys')
-          .doc(widget.profile.userId)
-          .update({"description": new_description});
+
+      if (field == 'name' ||
+          field == 'clubs' ||
+          field == 'sports' ||
+          field == 'movie_genres' ||
+          field == 'music_genres' ||
+          field == 'hangout_spot') {
+        String new_description = await _generateProfileDescription(
+            field == 'name' ? value : widget.profile.name,
+            widget.profile.gender,
+            field == 'clubs' ? value : _selectedClubs,
+            field == 'sports' ? value : _selectedSports,
+            field == 'movie_genres' ? value : _selectedMovieGenres,
+            field == 'music_genres' ? value : _selectedMusicGenres,
+            field == 'hangout_spot' ? value : _selectedHangoutSpot,
+            widget.profile.relationshipType);
+
+        await FirebaseFirestore.instance
+            .collection('surveys')
+            .doc(widget.profile.userId)
+            .update({"description": new_description});
+      }
 
       widget.onProfileUpdated();
       ScaffoldMessenger.of(context)
@@ -265,54 +337,93 @@ Business and Consulting club:Business and consulting club
                   ),
                 ),
 
-                // Centered profile image with loading indicator
-                Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
-                  ),
-                  child: ClipOval(
-                    child: profilepictureurl.isNotEmpty
-                        ? Image.network(
-                            profilepictureurl,
-                            width: 180,
-                            height: 180,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) {
-                                return child;
-                              }
-                              return Center(
+                // Editable profile image with loading indicator
+                Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    Container(
+                      width: 180,
+                      height: 180,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                      ),
+                      child: ClipOval(
+                        child: _isUploadingImage
+                            ? const Center(
                                 child: CircularProgressIndicator(
-                                  value: loadingProgress.expectedTotalBytes !=
-                                          null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                      : null,
                                   color: Colors.white,
                                 ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Center(
-                                child: Icon(
-                                  Icons.person,
-                                  size: 80,
-                                  color: Colors.white,
-                                ),
-                              );
-                            },
-                          )
-                        : const Center(
-                            child: Icon(
-                              Icons.person,
-                              size: 80,
-                              color: Colors.white,
-                            ),
+                              )
+                            : profilepictureurl.isNotEmpty
+                                ? Image.network(
+                                    profilepictureurl,
+                                    width: 180,
+                                    height: 180,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) {
+                                      if (loadingProgress == null) {
+                                        return child;
+                                      }
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          value: loadingProgress
+                                                      .expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                          color: Colors.white,
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Center(
+                                        child: Icon(
+                                          Icons.person,
+                                          size: 80,
+                                          color: Colors.white,
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : const Center(
+                                    child: Icon(
+                                      Icons.person,
+                                      size: 80,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                      ),
+                    ),
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
                           ),
-                  ),
+                        ],
+                      ),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(
+                          Icons.camera_alt,
+                          color: Color.fromRGBO(165, 18, 178, 1),
+                          size: 20,
+                        ),
+                        onPressed: _pickImage,
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 20),
@@ -322,6 +433,9 @@ Business and Consulting club:Business and consulting club
                   padding: const EdgeInsets.symmetric(horizontal: 30),
                   child: Column(
                     children: [
+                      // Name field
+                      _buildNameField(),
+
                       _buildSingleSelectField(
                         label: "Hangout Spot",
                         isEditing: _isEditingHangout,
@@ -387,11 +501,67 @@ Business and Consulting club:Business and consulting club
                   Navigator.of(context)
                       .pushNamedAndRemoveUntil('/login', (route) => false);
                 }),
+
+                const SizedBox(height: 30),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildNameField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              "Name",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.white,
+              ),
+            ),
+            const Spacer(),
+            IconButton(
+              icon: Icon(
+                _isEditingName ? Icons.check : Icons.edit,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                if (_isEditingName) {
+                  _saveProfile('name', _nameController.text);
+                }
+                setState(() => _isEditingName = !_isEditingName);
+              },
+            ),
+          ],
+        ),
+        _isEditingName
+            ? Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: TextField(
+                  controller: _nameController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                ),
+              )
+            : Text(
+                _nameController.text,
+                style: const TextStyle(fontSize: 16, color: Colors.white),
+              ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 

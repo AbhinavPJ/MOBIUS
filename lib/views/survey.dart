@@ -415,12 +415,18 @@ Business and Consulting club:Business and consulting club
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color.fromRGBO(165, 18, 178, 0.604),
+        backgroundColor: const Color.fromRGBO(165, 18, 178, 0.604),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              Navigator.of(context)
+                  .pushNamedAndRemoveUntil('/login', (route) => false);
+            },
+          ),
+        ],
       ),
       body: Container(
         width: double.infinity,
@@ -476,7 +482,6 @@ Business and Consulting club:Business and consulting club
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    // Progress indicator
                     LinearProgressIndicator(
                       value: (_currentPage + 1) / 5,
                       backgroundColor: Colors.white24,
@@ -489,8 +494,6 @@ Business and Consulting club:Business and consulting club
                       style: const TextStyle(color: Colors.white70),
                     ),
                     const SizedBox(height: 20),
-
-                    // Main survey content
                     Expanded(
                       child: SingleChildScrollView(
                         keyboardDismissBehavior:
@@ -498,8 +501,6 @@ Business and Consulting club:Business and consulting club
                         child: _buildSurveyPage(_currentPage),
                       ),
                     ),
-
-                    // Navigation buttons
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       child: Row(
@@ -722,11 +723,6 @@ Business and Consulting club:Business and consulting club
           ),
 
           const SizedBox(height: 20),
-          const Text(
-            "What clubs are you mostly into?",
-            style: TextStyle(color: Colors.white70, fontSize: 16),
-          ),
-          const SizedBox(height: 10),
 
           // Sports Selection
           SizedBox(

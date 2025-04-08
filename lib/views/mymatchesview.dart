@@ -1,8 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_2/views/matchmaking.dart';
 import 'package:flutter_application_2/views/viewprofile.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MyMatchesView extends StatefulWidget {
   final n1, n2, n3, n4, n5, n6, n7, n8, n9, n10;
@@ -489,7 +491,7 @@ class _MyMatchesViewState extends State<MyMatchesView> {
                   child: CircleAvatar(
                     radius: 32,
                     backgroundImage: match.profilePicture.isNotEmpty
-                        ? NetworkImage(match.profilePicture)
+                        ? CachedNetworkImageProvider(match.profilePicture)
                         : null,
                     child: match.profilePicture.isEmpty
                         ? const Icon(Icons.person,
@@ -591,6 +593,29 @@ class _MyMatchesViewState extends State<MyMatchesView> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _openWhatsApp(match.contactNumber),
+                      icon: const Icon(Icons.chat, color: Colors.white),
+                      label: const Text(
+                        "Chat on WhatsApp",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            const Color(0xFF25D366), // WhatsApp green
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -598,6 +623,15 @@ class _MyMatchesViewState extends State<MyMatchesView> {
         ),
       ),
     );
+  }
+
+  void _openWhatsApp(String phoneNumber) async {
+    final Uri url = Uri.parse("https://wa.me/$phoneNumber");
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      throw 'Could not launch WhatsApp';
+    }
   }
 
   Widget _buildContactInfoRow(IconData icon, String label, String value) {

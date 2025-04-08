@@ -41,7 +41,7 @@ dependencies:
   firebase_analytics: ^11.4.3
   image_picker: ^1.1.2
   firebase_storage: ^12.4.4
-  cached_network_image: ^3.4.1
+  cached_network_image: ^3.3.1
   dio: ^5.8.0+1
   firebase_messaging: ^15.2.4
   just_audio: ^0.9.36
@@ -50,7 +50,9 @@ dependencies:
   flutter_rating_bar: ^4.0.1
   precached_network_image: ^1.2.4
   provider: ^6.1.4
-
+  flutter_cache_manager: ^3.3.1
+  google_fonts: ^6.1.0
+  geolocator: ^13.0.4
 dev_dependencies:
   flutter_launcher_icons: "^0.14.3"
 

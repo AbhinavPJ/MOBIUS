@@ -22,6 +22,47 @@ class _LoginViewState extends State<LoginView> {
     super.initState();
   }
 
+  void _showForgotPasswordDialog() {
+    final TextEditingController _resetEmail = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Reset Password"),
+          content: TextField(
+            controller: _resetEmail,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              hintText: "Enter your registered email",
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () async {
+                final email = _resetEmail.text.trim();
+                try {
+                  await FirebaseAuth.instance
+                      .sendPasswordResetEmail(email: email);
+                  Navigator.of(context).pop();
+                  _showError("Password reset email sent");
+                } on FirebaseAuthException catch (e) {
+                  Navigator.of(context).pop();
+                  _showError(e.message ?? "Failed to send reset email");
+                }
+              },
+              child: const Text("Send"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _email.dispose();
@@ -36,12 +77,8 @@ class _LoginViewState extends State<LoginView> {
       resizeToAvoidBottomInset:
           true, // Allows content to move when keyboard appears
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: const Color.fromRGBO(165, 18, 178, 0.604),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -101,6 +138,23 @@ class _LoginViewState extends State<LoginView> {
                     _buildTextField(_email, "Enter email", false),
                     const SizedBox(height: 20),
                     _buildTextField(_password, "Enter password", true),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 30.0, top: 10),
+                        child: TextButton(
+                          onPressed: _showForgotPasswordDialog,
+                          child: const Text(
+                            "Forgot Password?",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 30),
                     _buildButton(
                         "Login", Colors.white, Colors.black, _loginUser),

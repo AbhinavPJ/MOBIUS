@@ -753,7 +753,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
         'n10': 1.0, // Music genres
       };
 
-      final double baseLearningRate = 0; // 5% adjustment potential
+      final double baseLearningRate = 0.001; // 5% adjustment potential
 
       // New method for updating coefficients
       print(coeffs);

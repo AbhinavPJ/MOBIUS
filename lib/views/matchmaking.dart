@@ -1,4 +1,4 @@
-// ignore_for_file: use_key_in_widget_constructors, library_private_types_in_public_api
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,7 +9,22 @@ import 'package:flutter_application_2/views/mymatchesview.dart';
 import 'package:flutter_application_2/views/profileview.dart';
 import 'dart:math' as math;
 import 'package:flutter_application_2/views/reviewdatesview.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+
+class CustomCacheManager {
+  static const key = 'matchmakingImagesCache';
+  static CacheManager instance = CacheManager(
+    Config(
+      key,
+      stalePeriod: const Duration(days: 7),
+      maxNrOfCacheObjects: 100,
+      repo: JsonCacheInfoRepository(databaseName: key),
+      fileService: HttpFileService(),
+    ),
+  );
+}
 
 class MatchmakingProfile {
   final String userId;
@@ -32,6 +47,9 @@ class MatchmakingProfile {
   final List<String>? rightswipedby;
   final String description;
   final List<String>? heleftwiped;
+  // Add a map to store user IDs and their swipe timestamps
+  final Map<String, Timestamp>? swipeTimestamps;
+
   MatchmakingProfile(
       {required this.userId,
       required this.name,
@@ -52,10 +70,22 @@ class MatchmakingProfile {
       required this.number,
       required this.rightswipedby,
       required this.description,
-      this.heleftwiped});
+      this.heleftwiped,
+      this.swipeTimestamps});
 
   factory MatchmakingProfile.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+    // Convert the swipeTimestamps from Firestore to a Map<String, Timestamp>
+    Map<String, Timestamp>? swipeTimestamps;
+    if (data['swipeTimestamps'] != null) {
+      swipeTimestamps = Map<String, Timestamp>.from(
+        (data['swipeTimestamps'] as Map<dynamic, dynamic>).map(
+          (key, value) => MapEntry(key.toString(), value as Timestamp),
+        ),
+      );
+    }
+
     return MatchmakingProfile(
         userId: data['userId'] ?? '',
         name: data['name'] ?? '',
@@ -76,7 +106,8 @@ class MatchmakingProfile {
         number: data['number'] ?? '',
         rightswipedby: List<String>.from(data['rightswipedby']),
         description: data['description'] ?? '',
-        heleftwiped: List<String>.from(data['Heleftwiped'] ?? []));
+        heleftwiped: List<String>.from(data['Heleftwiped'] ?? []),
+        swipeTimestamps: swipeTimestamps);
   }
 }
 
@@ -145,6 +176,85 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     super.dispose();
   }
 
+  // Add this method to fetch user profiles with cooldown check
+  Future<void> _fetchUserProfiles() async {
+    try {
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        return;
+      }
+
+      final DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
+          .collection('surveys')
+          .doc(currentUser.uid)
+          .get();
+
+      if (!currentUserDoc.exists) {
+        return;
+      }
+
+      currentUserProfile = MatchmakingProfile.fromFirestore(currentUserDoc);
+
+      // Get all profiles
+      final QuerySnapshot surveyDocs = await FirebaseFirestore.instance
+          .collection('surveys')
+          .where('userId', isNotEqualTo: currentUser.uid)
+          .get();
+
+      final List<MatchmakingProfile> allProfiles = surveyDocs.docs
+          .map((doc) => MatchmakingProfile.fromFirestore(doc))
+          .toList();
+
+      // Current timestamp for cooldown check
+      final Timestamp now = Timestamp.now();
+      final Duration cooldownPeriod = Duration(days: 7);
+
+      // Filter out profiles that the user has seen in the past week
+      final List<MatchmakingProfile> availableProfiles =
+          allProfiles.where((profile) {
+        // Skip profiles the user has already swiped left on
+        if (currentUserProfile!.heleftwiped?.contains(profile.userId) ??
+            false) {
+          return false;
+        }
+
+        // Check cooldown period
+        if (currentUserProfile!.swipeTimestamps != null &&
+            currentUserProfile!.swipeTimestamps!.containsKey(profile.userId)) {
+          final Timestamp swipeTime =
+              currentUserProfile!.swipeTimestamps![profile.userId]!;
+          final DateTime swipeDateTime = swipeTime.toDate();
+          final DateTime nowDateTime = now.toDate();
+
+          // Calculate difference in days
+          final difference = nowDateTime.difference(swipeDateTime).inDays;
+
+          // Return false if the profile is still in cooldown period (less than 7 days)
+          if (difference < cooldownPeriod.inDays) {
+            return false;
+          }
+        }
+
+        return true;
+      }).toList();
+
+      // Rank the filtered matches
+      rankedMatches = _rankMatches(availableProfiles);
+
+      // Convert ranked matches back to a list of profiles for the UI
+      potentialMatches = rankedMatches.map((entry) => entry.key).toList();
+
+      // Prepare the initial card stack
+      _prepareCardStack();
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print("Error fetching profiles: $e");
+    }
+  }
+
   void _cycleDisplayState() {
     setState(() {
       // Cycle through display states (1-3)
@@ -169,101 +279,226 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       }
     }
 
-    // Build state indicators
-    Widget stateIndicators = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildStateIndicator(1, "Score"),
-          _buildStateIndicator(2, "Year"),
-          _buildStateIndicator(3, "Dept"),
-        ],
-      ),
-    );
+    return LayoutBuilder(builder: (context, constraints) {
+      // Set screen size in provider
+      Provider.of<CardProvider>(context, listen: false)
+          .setScreenSize(Size(constraints.maxWidth, constraints.maxHeight));
 
-    List<Widget> stackedCards = [];
-    final int totalCards = _stackedProfiles.length;
+      // Make sure to reset position to center when rebuilding
+      Provider.of<CardProvider>(context, listen: false).resetPosition();
 
-    // Bottom card (if available)
-    if (totalCards >= 3) {
-      MatchmakingProfile thirdProfile = _stackedProfiles[0];
-      double thirdScore = _getScoreForProfile(thirdProfile);
-      String thirdBeta = (thirdScore % 100).toStringAsFixed(2);
+      final availableWidth = constraints.maxWidth;
+      final availableHeight = constraints.maxHeight;
 
-      stackedCards.add(
-        Positioned(
-          top: 40.0,
-          child: Transform.scale(
-            scale: 0.8,
-            child: Opacity(
-              opacity: 0.4,
-              child: BuildCard(thirdProfile, thirdBeta),
-            ),
-          ),
+      // Maximize card size while maintaining aspect ratio
+      final paddingVertical = 16.0;
+      final paddingHorizontal = 12.0;
+
+      final cardWidth = availableWidth - paddingHorizontal * 2;
+      final cardHeight = cardWidth * 1.4;
+      final maxHeight = availableHeight -
+          paddingVertical * 2 -
+          60; // space for stateIndicators
+
+      final adjustedCardHeight =
+          cardHeight > maxHeight ? maxHeight : cardHeight;
+      final adjustedCardWidth = adjustedCardHeight / 1.4;
+
+      // State indicators
+      Widget stateIndicators = Container(
+        width: availableWidth,
+        padding: EdgeInsets.symmetric(horizontal: availableWidth * 0.1),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildStateIndicator(1, "Score"),
+            _buildStateIndicator(2, "Year"),
+            _buildStateIndicator(3, "Dept"),
+          ],
         ),
       );
-    }
 
-    // Middle card (if available)
-    if (totalCards >= 2) {
-      MatchmakingProfile secondProfile = _stackedProfiles[totalCards - 2];
-      double secondScore = _getScoreForProfile(secondProfile);
-      String secondBeta = (secondScore % 100).toStringAsFixed(2);
+      List<Widget> stackedCards = [];
+      final int totalCards = _stackedProfiles.length;
 
-      stackedCards.add(
-        Positioned(
-          top: 20.0,
-          child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 300),
-            opacity: _isTransitioning ? 0.7 : 0.7,
-            child: AnimatedScale(
-              duration: const Duration(milliseconds: 300),
-              scale: _isTransitioning ? 0.95 : 0.9,
-              child: BuildCard(secondProfile, secondBeta),
+      try {
+        // Calculate the center position
+        final centerX = (availableWidth - adjustedCardWidth) / 2;
+        final centerY = (availableHeight - adjustedCardHeight - 60) / 2;
+
+        // Third card (bottom)
+        if (totalCards >= 3) {
+          final thirdProfile = _stackedProfiles[0];
+          final thirdScore = _getScoreForProfile(thirdProfile);
+          final thirdBeta = (thirdScore % 100).toStringAsFixed(2);
+
+          stackedCards.add(
+            Positioned(
+              // Position exactly at center
+              left: centerX,
+              top: centerY,
+              child: Transform.scale(
+                scale: 0.90,
+                child: Opacity(
+                  opacity: 0.4,
+                  child: BuildCard(thirdProfile, thirdBeta, adjustedCardWidth,
+                      adjustedCardHeight),
+                ),
+              ),
             ),
-          ),
+          );
+        }
+
+        // Second card (middle)
+        if (totalCards >= 2) {
+          final secondProfile = _stackedProfiles[totalCards - 2];
+          final secondScore = _getScoreForProfile(secondProfile);
+          final secondBeta = (secondScore % 100).toStringAsFixed(2);
+
+          stackedCards.add(
+            Positioned(
+              // Position exactly at center
+              left: centerX,
+              top: centerY,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: 0.7,
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 300),
+                  scale: _isTransitioning ? 0.95 : 0.95,
+                  child: BuildCard(secondProfile, secondBeta, adjustedCardWidth,
+                      adjustedCardHeight),
+                ),
+              ),
+            ),
+          );
+        }
+
+        // Front card (topmost)
+        if (totalCards > 0) {
+          final frontProfile = _stackedProfiles[totalCards - 1];
+          final frontScore = _getScoreForProfile(frontProfile);
+          final frontBeta = (frontScore % 100).toStringAsFixed(2);
+
+          stackedCards.add(
+            Consumer<CardProvider>(
+              builder: (context, provider, child) {
+                Widget cardWidget = _isCardFlipped
+                    ? _buildDescriptionCard(
+                        frontProfile, adjustedCardWidth, adjustedCardHeight)
+                    : BuildCard(frontProfile, frontBeta, adjustedCardWidth,
+                        adjustedCardHeight);
+
+                if (provider.isSwipingOut) {
+                  return AnimatedPositioned(
+                    duration: const Duration(milliseconds: 300),
+                    left: -adjustedCardWidth * 1.5,
+                    top: centerY, // Maintain vertical center during swipe
+                    child: cardWidget,
+                  );
+                } else if (provider.isSwipingRightOut) {
+                  return AnimatedPositioned(
+                    duration: const Duration(milliseconds: 300),
+                    left: availableWidth + adjustedCardWidth * 0.5,
+                    top: centerY, // Maintain vertical center during swipe
+                    child: cardWidget,
+                  );
+                } else {
+                  // Calculate absolute position based on provider position
+                  final absoluteX = centerX + provider.position.dx;
+                  final absoluteY = centerY + provider.position.dy;
+
+                  return Positioned(
+                    // Use absolute positioning from center
+                    left: absoluteX,
+                    top: absoluteY,
+                    child: Transform.rotate(
+                      angle: provider.angle * (math.pi / 180),
+                      child: GestureDetector(
+                        onTap: _cycleDisplayState,
+                        onPanStart: (details) {
+                          Provider.of<CardProvider>(context, listen: false)
+                              .startPosition(details);
+                        },
+                        onPanUpdate: (details) {
+                          Provider.of<CardProvider>(context, listen: false)
+                              .updatePosition(details);
+                        },
+                        onPanEnd: (details) {
+                          final provider =
+                              Provider.of<CardProvider>(context, listen: false);
+                          provider.endPosition();
+
+                          final status = provider.getStatus();
+
+                          if (status != SwipeStatus.none) {
+                            if (status == SwipeStatus.like) {
+                              _handleSwipeRight();
+                            } else if (status == SwipeStatus.dislike) {
+                              _handleSwipeLeft();
+                            }
+
+                            provider.resetPosition();
+                          }
+                        },
+                        child: cardWidget,
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          );
+        }
+      } catch (e) {
+        print("Error building card stack: $e");
+        stackedCards = [
+          Center(
+            child: Container(
+              width: adjustedCardWidth,
+              height: adjustedCardHeight,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Center(child: Text("Error loading profiles")),
+            ),
+          )
+        ];
+      }
+
+      return SafeArea(
+        child: Column(
+          children: [
+            stateIndicators,
+            SizedBox(height: paddingVertical),
+            Expanded(
+              child: Center(
+                child: Stack(
+                  // Removed alignment property to use explicit positioning
+                  children: stackedCards,
+                ),
+              ),
+            ),
+          ],
         ),
       );
-    }
-
-    // Front card - handle flipping here but not state switching
-    if (totalCards > 0) {
-      MatchmakingProfile frontProfile = _stackedProfiles[totalCards - 1];
-      double frontScore = _getScoreForProfile(frontProfile);
-      String frontBeta = (frontScore % 100).toStringAsFixed(2);
-
-      // Simple flipping mechanism
-      Widget frontWidget = _isCardFlipped
-          ? _buildDescriptionCard(frontProfile)
-          : buildFrontCard(frontProfile, frontBeta);
-
-      stackedCards.add(frontWidget);
-    }
-
-    return Column(
-      children: [
-        stateIndicators,
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 520, // Fixed height for card stack
-          child: Stack(
-            alignment: Alignment.center,
-            children: stackedCards,
-          ),
-        ),
-      ],
-    );
+    });
   }
 
-// Simplified description card without any transformation logic
-  Widget _buildDescriptionCard(MatchmakingProfile profile) {
+// Responsive description card with improved overflow handling
+  Widget _buildDescriptionCard(
+      MatchmakingProfile profile, double width, double height) {
+    // Constrain text sizes to prevent overflow
+    final titleSize = math.min(width * 0.08, 28.0); // Max 28px
+    final bodySize = math.min(width * 0.045, 16.0); // Max 16px
+
     return Container(
-      width: 350,
-      height: 500,
+      width: width,
+      height: height,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(math.min(20.0, width * 0.05)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
@@ -273,15 +508,29 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(math.min(16.0, width * 0.05)),
         child: SingleChildScrollView(
-          child: Text(
-            profile.description,
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.black87,
-              height: 1.5,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                "About Me",
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: titleSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: math.min(16.0, height * 0.03)),
+              Text(
+                profile.description,
+                style: TextStyle(
+                  fontSize: bodySize,
+                  color: Colors.black87,
+                  height: 1.5,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -300,6 +549,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 5),
           child: Column(
+            mainAxisSize: MainAxisSize.min, // Prevent vertical overflow
             children: [
               Container(
                 height: 4,
@@ -326,122 +576,66 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     );
   }
 
-  // New method to build a flippable card
-
-  Widget buildFrontCard(MatchmakingProfile currentMatch, String beta) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return GestureDetector(
-          // Tap on card cycles through info states
-          onTap: _cycleDisplayState,
-          child: Consumer<CardProvider>(
-            builder: (context, provider, child) {
-              final angle = (provider.angle) * math.pi / 180;
-              final center = constraints.smallest.center(Offset.zero);
-
-              // Only apply the swipe rotation
-              final rotatedMatrix = Matrix4.identity()
-                ..translate(center.dx, center.dy)
-                ..rotateZ(angle)
-                ..translate(-center.dx, -center.dy);
-
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 0),
-                transform: rotatedMatrix
-                  ..translate(provider.position.dx, provider.position.dy),
-                child: BuildCard(currentMatch, beta),
-              );
-            },
-          ),
-          // Pan gestures for swiping
-          onPanStart: (details) {
-            Provider.of<CardProvider>(context, listen: false)
-                .startPosition(details);
-          },
-          onPanUpdate: (details) {
-            Provider.of<CardProvider>(context, listen: false)
-                .updatePosition(details);
-          },
-          onPanEnd: (details) {
-            final provider = Provider.of<CardProvider>(context, listen: false);
-            provider.endPosition();
-
-            // Check swipe result
-            final status = provider.getStatus();
-
-            if (status != SwipeStatus.none) {
-              // Handle swipe based on direction
-              if (status == SwipeStatus.like) {
-                _handleSwipeRight();
-              } else if (status == SwipeStatus.dislike) {
-                _handleSwipeLeft();
-              }
-
-              // Reset card position
-              provider.resetPosition();
-            }
-          },
-        );
-      },
-    );
+// Updated front card with overflow protection
+  Widget buildFrontCard(MatchmakingProfile currentMatch, String beta,
+      double width, double height) {
+    // This method is no longer needed as we've integrated its functionality
+    // directly into the _buildCardStack method above
+    return BuildCard(currentMatch, beta, width, height);
   }
 
-// Modified to handle different display states only (not flipping)
-  Widget buildInfo(MatchmakingProfile profile, String beta) {
-    String displayText;
-    switch (_currentDisplayState) {
-      case 1:
-        displayText = "Match score: $beta";
-        break;
-      case 2:
-        displayText = Fetchyear(profile);
-        break;
-      case 3:
-        displayText = Fetchdept(profile);
-        break;
-      default:
-        displayText = "Match score: $beta";
+// Simplified BuildCard that avoids complex transformations
+  Widget BuildCard(MatchmakingProfile currentMatch, String beta, double width,
+      double height) {
+    final provider = Provider.of<CardProvider>(context, listen: false);
+    String decisionText = "";
+    Color decisionColor = Colors.transparent;
+
+    // Safely determine swipe direction indicators
+    final dx = provider.position.dx;
+    if (dx > 15) {
+      // Add threshold to avoid flickering
+      decisionText = "SMASH";
+      decisionColor = Color.fromARGB(255, 179, 255, 1);
+    } else if (dx < -15) {
+      decisionText = "PASS";
+      decisionColor = Color.fromRGBO(244, 54, 54, 1.0);
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          profile.name,
-          style: const TextStyle(
-            fontSize: 28,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            shadows: [Shadow(blurRadius: 10, color: Colors.black)],
-          ),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          displayText,
-          style: const TextStyle(
-            fontSize: 18,
-            color: Colors.white70,
-            fontWeight: FontWeight.w500,
-            shadows: [Shadow(blurRadius: 10, color: Colors.black)],
-          ),
-        ),
-      ],
-    );
-  }
+    // Calculate constrained values to prevent overflow
+    final borderRadius = math.min(20.0, width * 0.05);
+    final decisionFontSize = math.min(40.0, width * 0.12);
+    final iconSize = math.min(50.0, width * 0.15);
 
-  Widget BuildCard(MatchmakingProfile currentMatch, String beta) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(borderRadius),
       child: Stack(
+        clipBehavior: Clip.hardEdge, // Prevent children from overflowing
         children: [
-          // Background image
+          // Background image with caching
           Container(
-            width: 350,
-            height: 500,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: NetworkImage(currentMatch.profilePicture),
-                fit: BoxFit.cover,
+            width: width,
+            height: height,
+            child: CachedNetworkImage(
+              imageUrl: currentMatch.profilePicture,
+              cacheManager: CustomCacheManager.instance,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                color: Colors.grey[300],
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(Colors.deepPurpleAccent),
+                  ),
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
+                color: Colors.grey[300],
+                child: Icon(
+                  Icons.error,
+                  color: Colors.red,
+                  size: iconSize,
+                ),
               ),
             ),
           ),
@@ -452,7 +646,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
             left: 0,
             right: 0,
             child: Container(
-              height: 100,
+              height: math.min(100.0, height * 0.2),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
@@ -469,18 +663,96 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
 
           // Profile info at the bottom left with updated info display
           Positioned(
-            bottom: 20,
-            left: 20,
-            child: buildInfo(currentMatch, beta),
+            bottom: math.min(20.0, height * 0.04),
+            left: math.min(20.0, width * 0.05),
+            right: math.min(20.0,
+                width * 0.05), // Add right constraint to prevent text overflow
+            child: buildInfo(currentMatch, beta, width),
           ),
+
+          // Decision text (SMASH or PASS)
+          if (decisionText.isNotEmpty)
+            Positioned(
+              top: math.min(40.0, height * 0.08),
+              left: math.min(50.0, width * 0.1),
+              right: math.min(50.0, width * 0.1),
+              child: Text(
+                decisionText,
+                style: TextStyle(
+                  fontSize: decisionFontSize,
+                  fontWeight: FontWeight.bold,
+                  color: decisionColor,
+                  shadows: [
+                    Shadow(
+                      blurRadius: 10,
+                      color: Colors.black.withOpacity(0.5),
+                      offset: Offset(2, 2),
+                    ),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis, // Handle text overflow
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+// Updated buildInfo with overflow protection for text
+  Widget buildInfo(MatchmakingProfile profile, String beta, double cardWidth) {
+    String displayText;
+    switch (_currentDisplayState) {
+      case 1:
+        displayText = "Match score: $beta";
+        break;
+      case 2:
+        displayText = Fetchyear(profile);
+        break;
+      case 3:
+        displayText = Fetchdept(profile);
+        break;
+      default:
+        displayText = "Match score: $beta";
+    }
+
+    // Constrain text sizes to prevent overflow
+    final nameSize = math.min(cardWidth * 0.08, 28.0); // Max 28px
+    final infoSize = math.min(cardWidth * 0.05, 18.0); // Max 18px
+
+    return Column(
+      mainAxisSize: MainAxisSize.min, // Prevent vertical overflow
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          profile.name,
+          style: TextStyle(
+            fontSize: nameSize,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            shadows: [Shadow(blurRadius: 10, color: Colors.black)],
+          ),
+          overflow: TextOverflow.ellipsis, // Handle text overflow
+        ),
+        SizedBox(height: math.min(5.0, cardWidth * 0.01)),
+        Text(
+          displayText,
+          style: TextStyle(
+            fontSize: infoSize,
+            color: Colors.white70,
+            fontWeight: FontWeight.w500,
+            shadows: [Shadow(blurRadius: 10, color: Colors.black)],
+          ),
+          overflow: TextOverflow.ellipsis, // Handle text overflow
+        ),
+      ],
     );
   }
 
   // Update buildFrontCard to handle the flip gesture
 
   // Update the _handleSwipeLeft and _handleSwipeRight for seamless transitions
+  // Update _handleSwipeLeft to store timestamp for cooldown
   void _handleSwipeLeft() async {
     if (_isTransitioning) return;
 
@@ -490,18 +762,27 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
         _isCardFlipped = false; // Reset flip state for new card
       });
 
+      // Get the current front profile
+      int frontIndex = potentialMatches.length - 1;
+      MatchmakingProfile frontProfile = potentialMatches[frontIndex];
+
       // Pre-fetch the next stack while animation is happening
-      DocumentReference matchRef = FirebaseFirestore.instance
+      DocumentReference userRef = FirebaseFirestore.instance
           .collection('surveys')
           .doc(currentUserProfile!.userId);
 
-      // Update Firebase in the background, don't wait for it
-      matchRef.update({
-        'Heleftwiped': FieldValue.arrayUnion(
-            [potentialMatches[potentialMatches.length - 1].userId])
-      });
+      // Get current timestamp for cooldown
+      Timestamp swipeTimestamp = Timestamp.now();
 
-      // Animate transition but prepare next card immediately
+      // Update Firebase to store left swipe and swipe timestamp
+      Map<String, dynamic> updates = {
+        'Heleftwiped': FieldValue.arrayUnion([frontProfile.userId]),
+        'swipeTimestamps.${frontProfile.userId}': swipeTimestamp
+      };
+
+      // Update Firebase in the background
+      userRef.update(updates);
+
       if (mounted) {
         setState(() {
           // Remove current card
@@ -531,6 +812,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     }
   }
 
+  // Update _handleSwipeRight to store timestamp for cooldown
   void _handleSwipeRight() {
     if (_isTransitioning) return;
 
@@ -543,6 +825,17 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
         _isTransitioning = true;
         _isCardFlipped = false; // Reset flip state for new card
       });
+
+      // Get current timestamp for cooldown
+      Timestamp swipeTimestamp = Timestamp.now();
+
+      // Update user's document to add the swipe timestamp
+      DocumentReference userRef = FirebaseFirestore.instance
+          .collection('surveys')
+          .doc(currentUserProfile!.userId);
+
+      userRef
+          .update({'swipeTimestamps.${frontProfile.userId}': swipeTimestamp});
 
       // Handle like/match logic in background
       if (currentUserProfile != null) {
@@ -823,104 +1116,6 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     }
     return intersects.toDouble() /
         (list1.length.toDouble() + list2.length.toDouble() - intersects);
-  }
-
-  Future<void> _fetchUserProfiles() async {
-    try {
-      print("Fetching user profile...");
-      User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) return;
-
-      // Fetch current user's survey document instead of users collection
-      DocumentSnapshot currentUserDoc = await FirebaseFirestore.instance
-          .collection('surveys')
-          .doc(currentUser.uid)
-          .get();
-
-      // Ensure document exists before creating profile
-      if (!currentUserDoc.exists) {
-        print("No survey document found for current user");
-        return;
-      }
-
-      // Create currentUserProfile safely
-      MatchmakingProfile tempProfile =
-          MatchmakingProfile.fromFirestore(currentUserDoc);
-
-      // Verify all critical fields are populated
-      if (tempProfile.userId.isEmpty ||
-          tempProfile.gender.isEmpty ||
-          tempProfile.entryNumber.isEmpty) {
-        print("Incomplete user profile data");
-        return;
-      }
-
-      // Set state with the complete profile
-      if (mounted) {
-        setState(() {
-          currentUserProfile = tempProfile;
-        });
-      }
-
-      // Now fetch potential matches
-      String oppositeGender =
-          currentUserProfile!.gender == 'MALE' ? 'FEMALE' : 'MALE';
-
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('surveys')
-          .where('userId', isNotEqualTo: currentUser.uid)
-          .where('gender', isEqualTo: oppositeGender)
-          .get();
-
-      List<MatchmakingProfile> fetchedProfiles = querySnapshot.docs
-          .map((doc) => MatchmakingProfile.fromFirestore(doc))
-          .toList();
-
-      // Rank matches only if profile is completely loaded
-      if (currentUserProfile != null && mounted) {
-        rankedMatches = _rankMatches(fetchedProfiles);
-
-        setState(() {
-          potentialMatches = rankedMatches.map((entry) => entry.key).toList();
-          len = potentialMatches.length;
-        });
-
-        // Load first description
-        if (potentialMatches.isNotEmpty) {
-          _loadProfileDescription(potentialMatches[currentMatchIndex]);
-        }
-      }
-    } catch (e) {
-      print("Error fetching user profiles: $e");
-    }
-  }
-
-  Future<void> _loadProfileDescription(MatchmakingProfile profile) async {
-    if (!mounted) return;
-
-    setState(() {
-      isLoadingDescription = true;
-      currentDescription = null;
-    });
-
-    try {
-      String description = profile.description;
-
-      if (mounted) {
-        setState(() {
-          currentDescription = description;
-          isLoadingDescription = false;
-        });
-      }
-    } catch (e) {
-      print("Error generating description: $e");
-      if (mounted) {
-        setState(() {
-          currentDescription = "Could not generate profile description.";
-          isLoadingDescription = false;
-        });
-      }
-    }
   }
 
   // Modified AClogic method to not require context
@@ -1229,35 +1424,54 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       appBar: _buildAppBar(context),
       bottomNavigationBar: _buildBottomBar(context),
       backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          const SizedBox(height: 5),
-          // Card stack with state indicators
-          _buildCardStack(),
-          const SizedBox(height: 5),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            _buildCircularButton1(
-                icon: Icons.close,
-                onPressed: () {
-                  // Handle swipe left/dislike
-                  _handleSwipeLeft();
-                }),
-            const SizedBox(width: 20),
-            _buildCircularButton3(
-                icon: _isCardFlipped ? Icons.flip_to_front : Icons.flip_to_back,
-                onPressed: () {
-                  // ONLY flip the card here - no state change
-                  _flipCard();
-                }),
-            const SizedBox(width: 20),
-            _buildCircularButton2(
-                icon: Icons.check,
-                onPressed: () {
-                  // Handle swipe right/like
-                  _handleSwipeRight();
-                }),
-          ])
-        ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 5),
+
+            // Card stack takes most of the available space
+            Expanded(
+              child: _buildCardStack(),
+            ),
+
+            // Fixed height for bottom buttons to ensure they're visible
+            Container(
+              height: 80, // Fixed height to ensure visibility
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildCircularButton1(
+                      icon: Icons.close,
+                      onPressed: () {
+                        // Handle swipe left/dislike
+                        Provider.of<CardProvider>(context, listen: false)
+                            .triggerExternalSwipeLeft();
+                        _handleSwipeLeft();
+                      }),
+                  const SizedBox(width: 20),
+                  _buildCircularButton3(
+                      icon: _isCardFlipped
+                          ? Icons.flip_to_front
+                          : Icons.flip_to_back,
+                      onPressed: () {
+                        // ONLY flip the card here - no state change
+                        _flipCard();
+                      }),
+                  const SizedBox(width: 20),
+                  _buildCircularButton2(
+                      icon: Icons.check,
+                      onPressed: () {
+                        Provider.of<CardProvider>(context, listen: false)
+                            .triggerSwipeRightOut();
+                        // Handle swipe right/like
+                        _handleSwipeRight();
+                      }),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1271,11 +1485,11 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       return;
     }
 
+    // Maintain a sliding window of 3 cards (or less if fewer remain)
     _stackedProfiles = [];
     final int totalCards = potentialMatches.length;
-
-    // Always show at least one card, but up to 3 if available
-    int startIndex = math.max(0, totalCards - 3);
+    const int windowSize = 3; // Fixed window size
+    int startIndex = math.max(0, totalCards - windowSize);
 
     for (int i = startIndex; i < totalCards; i++) {
       _stackedProfiles.add(potentialMatches[i]);

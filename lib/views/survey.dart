@@ -33,9 +33,14 @@ class _SurveyViewState extends State<SurveyView> {
   final TextEditingController _hobbiesController = TextEditingController();
   final TextEditingController _sportsController = TextEditingController();
   final TextEditingController _phonenumbercontroller = TextEditingController();
-
+  final TextEditingController _yearController = TextEditingController();
+  final TextEditingController _branchController = TextEditingController();
+  final TextEditingController _gendercontroller = TextEditingController();
   // Focus nodes for each text field
+  final FocusNode _genderFocusNode = FocusNode();
   final FocusNode _nameFocusNode = FocusNode();
+  final FocusNode _branchFocusNode = FocusNode();
+  final FocusNode _yearFocusNode = FocusNode();
   final FocusNode _entryNumberFocusNode = FocusNode();
   final FocusNode _phoneNumberFocusNode = FocusNode();
   final FocusNode _musicGenresFocusNode = FocusNode();
@@ -76,14 +81,13 @@ class _SurveyViewState extends State<SurveyView> {
   ];
 
   final List<String> _hangoutOptions = [
+    "SAC",
     "CCD",
     "Nescafe",
     "Amul",
     "Night mess",
     "Hostel VR/CR"
   ];
-
-  final List<String> _genders = ["MALE", "FEMALE"];
 
   @override
   void initState() {
@@ -332,7 +336,7 @@ Business and Consulting club:Business and consulting club
     if (_gender == null) {
       _showSnackBar("Please enter your gender", isError: true);
       setState(() {
-        _currentPage = 1;
+        _currentPage = 0;
       });
     }
     if (_personality == null || _hangoutSpot == null || _popularity == null) {
@@ -588,7 +592,7 @@ Business and Consulting club:Business and consulting club
   Widget _buildSurveyPage(int index) {
     switch (index) {
       case 0:
-        return _buildBasicInfoPage();
+        return _buildProfileForm(context);
       case 1:
         return _buildGenreSelectorPage();
       case 2:
@@ -598,62 +602,8 @@ Business and Consulting club:Business and consulting club
       case 4:
         return _buildFinalPage();
       default:
-        return _buildBasicInfoPage();
+        return _buildProfileForm(context);
     }
-  }
-
-  Widget _buildBasicInfoPage() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Basic Information",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
-          _buildTextField(
-            "Enter your name",
-            _nameController,
-            focusNode: _nameFocusNode,
-            onSubmitted: (value) {
-              FocusScope.of(context).requestFocus(_entryNumberFocusNode);
-            },
-          ),
-          const SizedBox(height: 20),
-          _buildTextField(
-            "Enter your Entry Number",
-            _entryNumberController,
-            focusNode: _entryNumberFocusNode,
-            onSubmitted: (value) {
-              FocusScope.of(context).requestFocus(_phoneNumberFocusNode);
-            },
-          ),
-          const SizedBox(height: 20),
-          _buildTextField(
-            "Enter your phone number",
-            _phonenumbercontroller,
-            focusNode: _phoneNumberFocusNode,
-            onSubmitted: (value) {
-              // No more text fields on this page, so we'll handle differently
-              // Either focus on the dropdown or just move to next page
-              _nextPage();
-            },
-          ),
-          const SizedBox(height: 20),
-          _buildDropdown("  What is your Gender?", _genders, (value) {
-            setState(() {
-              _gender = value;
-            });
-          }, _gender)
-        ],
-      ),
-    );
   }
 
   Widget _buildSportsPage() {
@@ -693,8 +643,8 @@ Business and Consulting club:Business and consulting club
       "Lit club",
       "QC",
       "Design club",
-      "Dance club"
-          "Drama club",
+      "Dance club",
+      "Drama club",
       "Spic Macay"
     ];
 
@@ -785,6 +735,250 @@ Business and Consulting club:Business and consulting club
         ],
       ),
     );
+  }
+
+  Widget _buildProfileForm(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Tell us about yourself",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Name field
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: TextField(
+              controller: _nameController,
+              focusNode: _nameFocusNode,
+              decoration: InputDecoration(
+                hintText: 'Enter your name',
+                hintStyle: TextStyle(
+                    color: Colors.white70), // slightly dimmed for contrast
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.2),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              ),
+              style: const TextStyle(color: Colors.white),
+              cursorColor: Colors.white,
+              onSubmitted: (value) {
+                FocusScope.of(context).requestFocus(_yearFocusNode);
+              },
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Year and Branch section
+          Text(
+            "Select your current year and branch",
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Year and Branch row
+          Row(
+            children: [
+              // Year dropdown
+              Expanded(
+                flex: 3,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _yearController.text.isEmpty
+                          ? null
+                          : _yearController.text,
+                      dropdownColor: const Color.fromRGBO(0, 50, 100, 1),
+                      focusNode: _yearFocusNode,
+                      hint: const Text(
+                        "Current Year",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      isExpanded: true,
+                      icon: const Icon(Icons.arrow_drop_down,
+                          color: Colors.white),
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                      items: [
+                        'First Year',
+                        'Second Year',
+                        'Third Year',
+                        'Fourth Year',
+                        'Fifth Year',
+                      ].map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (newValue) {
+                        setState(() {
+                          _yearController.text = newValue ?? '';
+                          _updateEntryNumber();
+                        });
+                        FocusScope.of(context).requestFocus(_branchFocusNode);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // Branch code dropdown
+              Expanded(
+                flex: 2,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _branchController.text.isEmpty
+                          ? null
+                          : _branchController.text,
+                      dropdownColor: const Color.fromRGBO(0, 50, 100, 1),
+                      focusNode: _branchFocusNode,
+                      hint: const Text(
+                        "Branch",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      isExpanded: true,
+                      icon: const Icon(Icons.arrow_drop_down,
+                          color: Colors.white),
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                      items: [
+                        'CS',
+                        'MT',
+                        'EE',
+                        'AM',
+                        'BB',
+                        'TT',
+                        'CE',
+                        'CH',
+                        'CY',
+                        'PH',
+                        'MS',
+                        'ES'
+                      ].map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (newValue) {
+                        setState(() {
+                          _branchController.text = newValue ?? '';
+                          _updateEntryNumber();
+                        });
+                        FocusScope.of(context)
+                            .requestFocus(_phoneNumberFocusNode);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // Phone number field
+          Text(
+            "Contact Information",
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: TextField(
+              controller: _phonenumbercontroller,
+              focusNode: _phoneNumberFocusNode,
+              decoration: InputDecoration(
+                hintText: 'Enter your phone number',
+                hintStyle: TextStyle(color: Colors.white70),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.2),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              ),
+              style: TextStyle(color: Colors.white),
+              keyboardType: TextInputType.phone,
+              onSubmitted: (value) {
+                FocusScope.of(context).requestFocus(_genderFocusNode);
+              },
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Gender section
+          _buildDropdown("What is your Gender?", ['Male', 'Female'], (value) {
+            setState(() {
+              _gendercontroller.text = value ?? '';
+              _gender = _gendercontroller.text;
+            });
+          }, _gendercontroller.text.isEmpty ? null : _gendercontroller.text),
+        ],
+      ),
+    );
+  }
+
+// Helper method to update entry number based on year and branch
+  void _updateEntryNumber() {
+    final yearPrefix = _getYearPrefix(_yearController.text);
+    final branchCode = _branchController.text;
+    _entryNumberController.text = "$yearPrefix$branchCode";
+  }
+
+  String _getYearPrefix(String yearSelection) {
+    switch (yearSelection) {
+      case 'First Year':
+        return '2024';
+      case 'Second Year':
+        return '2023';
+      case 'Third Year':
+        return '2022';
+      case 'Fourth Year':
+        return '2021';
+      case 'Fifth Year':
+        return '2020';
+      default:
+        return '';
+    }
   }
 
   Widget _buildPersonalityPage() {
@@ -1161,30 +1355,6 @@ Business and Consulting club:Business and consulting club
         Icons.person,
         size: 80,
         color: Colors.white,
-      ),
-    );
-  }
-
-  Widget _buildTextField(String hint, TextEditingController controller,
-      {int maxLines = 1, FocusNode? focusNode, Function(String)? onSubmitted}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: TextField(
-        controller: controller,
-        style: const TextStyle(color: Colors.white),
-        maxLines: maxLines,
-        focusNode: focusNode,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white),
-          filled: true,
-          fillColor: Colors.white.withOpacity(0.2),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
-        ),
-        onSubmitted: onSubmitted,
       ),
     );
   }

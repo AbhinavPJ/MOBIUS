@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "164293553674",
-    "project_id": "mobiusdatabase",
-    "storage_bucket": "mobiusdatabase.firebasestorage.app"
+    "project_number": "830030728492",
+    "project_id": "mobius-38958",
+    "storage_bucket": "mobius-38958.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:164293553674:android:cc2e6d258f7e035d0e39f3",
+        "mobilesdk_app_id": "1:830030728492:android:cc52fc88700a34c955b089",
         "android_client_info": {
           "package_name": "com.example.flutter_application_2"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyACRVXWY-mb9TfodlKFL7rCOXj990wMbI0"
+          "current_key": "AIzaSyBJ4C197QKyei6UcXS317IQzmQmoTkIiXE"
         }
       ],
       "services": {

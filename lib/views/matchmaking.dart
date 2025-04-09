@@ -84,6 +84,7 @@ class MatchmakingProfile {
           (key, value) => MapEntry(key.toString(), value as Timestamp),
         ),
       );
+      print(swipeTimestamps);
     }
 
     return MatchmakingProfile(
@@ -212,12 +213,6 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       // Filter out profiles that the user has seen in the past week
       final List<MatchmakingProfile> availableProfiles =
           allProfiles.where((profile) {
-        // Skip profiles the user has already swiped left on
-        if (currentUserProfile!.heleftwiped?.contains(profile.userId) ??
-            false) {
-          return false;
-        }
-
         // Check cooldown period
         if (currentUserProfile!.swipeTimestamps != null &&
             currentUserProfile!.swipeTimestamps!.containsKey(profile.userId)) {
@@ -291,18 +286,18 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       final availableHeight = constraints.maxHeight;
 
       // Maximize card size while maintaining aspect ratio
-      final paddingVertical = 16.0;
-      final paddingHorizontal = 12.0;
+      final paddingVertical = 10.0;
+      final paddingHorizontal = 10.0;
 
       final cardWidth = availableWidth - paddingHorizontal * 2;
-      final cardHeight = cardWidth * 1.4;
+      final cardHeight = cardWidth * 1.5;
       final maxHeight = availableHeight -
           paddingVertical * 2 -
-          60; // space for stateIndicators
+          40; // space for stateIndicators
 
       final adjustedCardHeight =
           cardHeight > maxHeight ? maxHeight : cardHeight;
-      final adjustedCardWidth = adjustedCardHeight / 1.4;
+      final adjustedCardWidth = adjustedCardHeight / 1.5;
 
       // State indicators
       Widget stateIndicators = Container(
@@ -584,6 +579,46 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     return BuildCard(currentMatch, beta, width, height);
   }
 
+  String extractFileName(String fullPath) {
+    final decoded = Uri.decodeFull(fullPath); // Decode %2F
+    final start =
+        decoded.indexOf('profile_pictures/') + 'profile_pictures/'.length;
+    final end = decoded.indexOf('.jpg', start) + 4; // Include '.jpg'
+    return decoded.substring(start, end);
+  }
+
+  Widget buildScoreBadge(String score) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.deepPurpleAccent,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.star, color: Colors.white, size: 18),
+          const SizedBox(width: 6),
+          Text(
+            score, // e.g. 8.7
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 // Simplified BuildCard that avoids complex transformations
   Widget BuildCard(MatchmakingProfile currentMatch, String beta, double width,
       double height) {
@@ -606,95 +641,106 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     final borderRadius = math.min(20.0, width * 0.05);
     final decisionFontSize = math.min(40.0, width * 0.12);
     final iconSize = math.min(50.0, width * 0.15);
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: Stack(
-        clipBehavior: Clip.hardEdge, // Prevent children from overflowing
-        children: [
-          // Background image with caching
-          Container(
-            width: width,
-            height: height,
-            child: CachedNetworkImage(
-              imageUrl: currentMatch.profilePicture,
-              cacheManager: CustomCacheManager.instance,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                color: Colors.grey[300],
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Colors.deepPurpleAccent),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: Offset(0, 10), // soft drop shadow
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            // Background image
+            Container(
+              width: width,
+              height: height,
+              child: CachedNetworkImage(
+                imageUrl: currentMatch.profilePicture,
+                cacheManager: CustomCacheManager.instance,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  color: Colors.grey[300],
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors.deepPurpleAccent),
+                    ),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: Colors.grey[300],
+                  child: Icon(
+                    Icons.error,
+                    color: Colors.red,
+                    size: iconSize,
                   ),
                 ),
               ),
-              errorWidget: (context, url, error) => Container(
-                color: Colors.grey[300],
-                child: Icon(
-                  Icons.error,
-                  color: Colors.red,
-                  size: iconSize,
-                ),
-              ),
             ),
-          ),
 
-          // Gradient overlay at the bottom for better readability
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: math.min(100.0, height * 0.2),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.8),
-                    Colors.black.withOpacity(0.3),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Profile info at the bottom left with updated info display
-          Positioned(
-            bottom: math.min(20.0, height * 0.04),
-            left: math.min(20.0, width * 0.05),
-            right: math.min(20.0,
-                width * 0.05), // Add right constraint to prevent text overflow
-            child: buildInfo(currentMatch, beta, width),
-          ),
-
-          // Decision text (SMASH or PASS)
-          if (decisionText.isNotEmpty)
+            // Gradient overlay
             Positioned(
-              top: math.min(40.0, height * 0.08),
-              left: math.min(50.0, width * 0.1),
-              right: math.min(50.0, width * 0.1),
-              child: Text(
-                decisionText,
-                style: TextStyle(
-                  fontSize: decisionFontSize,
-                  fontWeight: FontWeight.bold,
-                  color: decisionColor,
-                  shadows: [
-                    Shadow(
-                      blurRadius: 10,
-                      color: Colors.black.withOpacity(0.5),
-                      offset: Offset(2, 2),
-                    ),
-                  ],
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: math.min(100.0, height * 0.2),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.8),
+                      Colors.black.withOpacity(0.3),
+                      Colors.transparent,
+                    ],
+                  ),
                 ),
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis, // Handle text overflow
               ),
             ),
-        ],
+
+            // Profile info
+            Positioned(
+              bottom: math.min(20.0, height * 0.04),
+              left: math.min(20.0, width * 0.05),
+              right: math.min(20.0, width * 0.05),
+              child: buildInfo(currentMatch, beta, width),
+            ),
+
+            // Decision text
+            if (decisionText.isNotEmpty)
+              Positioned(
+                top: math.min(40.0, height * 0.08),
+                left: math.min(50.0, width * 0.1),
+                right: math.min(50.0, width * 0.1),
+                child: Text(
+                  decisionText,
+                  style: TextStyle(
+                    fontSize: decisionFontSize,
+                    fontWeight: FontWeight.bold,
+                    color: decisionColor,
+                    shadows: [
+                      Shadow(
+                        blurRadius: 10,
+                        color: Colors.black.withOpacity(0.5),
+                        offset: Offset(2, 2),
+                      ),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -718,7 +764,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
 
     // Constrain text sizes to prevent overflow
     final nameSize = math.min(cardWidth * 0.08, 28.0); // Max 28px
-    final infoSize = math.min(cardWidth * 0.05, 18.0); // Max 18px
+    //final infoSize = math.min(cardWidth * 0.05, 18.0); // Max 18px
 
     return Column(
       mainAxisSize: MainAxisSize.min, // Prevent vertical overflow
@@ -735,16 +781,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
           overflow: TextOverflow.ellipsis, // Handle text overflow
         ),
         SizedBox(height: math.min(5.0, cardWidth * 0.01)),
-        Text(
-          displayText,
-          style: TextStyle(
-            fontSize: infoSize,
-            color: Colors.white70,
-            fontWeight: FontWeight.w500,
-            shadows: [Shadow(blurRadius: 10, color: Colors.black)],
-          ),
-          overflow: TextOverflow.ellipsis, // Handle text overflow
-        ),
+        buildScoreBadge(displayText)
       ],
     );
   }
@@ -833,7 +870,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       DocumentReference userRef = FirebaseFirestore.instance
           .collection('surveys')
           .doc(currentUserProfile!.userId);
-
+      print(swipeTimestamp);
       userRef
           .update({'swipeTimestamps.${frontProfile.userId}': swipeTimestamp});
 

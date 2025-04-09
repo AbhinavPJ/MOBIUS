@@ -41,49 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCNjAiQNcQTHBVUO38JZ3S4CML8Mt4rtys',
-    appId: '1:164293553674:web:c517c5b14edf7e590e39f3',
-    messagingSenderId: '164293553674',
-    projectId: 'mobiusdatabase',
-    authDomain: 'mobiusdatabase.firebaseapp.com',
-    storageBucket: 'mobiusdatabase.firebasestorage.app',
-    measurementId: 'G-JR5BCHZ3X7',
+    apiKey: 'AIzaSyDdAdJjY86j57dg9Yq32qZGtnJfIMGMWoE',
+    appId: '1:830030728492:web:ed7d9f9cff317f8655b089',
+    messagingSenderId: '830030728492',
+    projectId: 'mobius-38958',
+    authDomain: 'mobius-38958.firebaseapp.com',
+    storageBucket: 'mobius-38958.firebasestorage.app',
+    measurementId: 'G-QS9BQP13H0',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyACRVXWY-mb9TfodlKFL7rCOXj990wMbI0',
-    appId: '1:164293553674:android:cc2e6d258f7e035d0e39f3',
-    messagingSenderId: '164293553674',
-    projectId: 'mobiusdatabase',
-    storageBucket: 'mobiusdatabase.firebasestorage.app',
+    apiKey: 'AIzaSyBJ4C197QKyei6UcXS317IQzmQmoTkIiXE',
+    appId: '1:830030728492:android:cc52fc88700a34c955b089',
+    messagingSenderId: '830030728492',
+    projectId: 'mobius-38958',
+    storageBucket: 'mobius-38958.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyC6gay7gXbgebLTCscGRxKOdWgu2Lu27Fg',
-    appId: '1:164293553674:ios:e8b0d5082619c3ff0e39f3',
-    messagingSenderId: '164293553674',
-    projectId: 'mobiusdatabase',
-    storageBucket: 'mobiusdatabase.firebasestorage.app',
-    iosBundleId: 'com.example.flutterApplication2',
+    apiKey: 'AIzaSyCThVXof5lS86jPANxO1NI71XspINJzHRw',
+    appId: '1:830030728492:ios:5f133cdaae8a013b55b089',
+    messagingSenderId: '830030728492',
+    projectId: 'mobius-38958',
+    storageBucket: 'mobius-38958.firebasestorage.app',
+    iosBundleId: 'com.abhinav.mobius',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyC6gay7gXbgebLTCscGRxKOdWgu2Lu27Fg',
-    appId: '1:164293553674:ios:e8b0d5082619c3ff0e39f3',
-    messagingSenderId: '164293553674',
-    projectId: 'mobiusdatabase',
-    storageBucket: 'mobiusdatabase.firebasestorage.app',
+    apiKey: 'AIzaSyCThVXof5lS86jPANxO1NI71XspINJzHRw',
+    appId: '1:830030728492:ios:41e07d22325eb8a655b089',
+    messagingSenderId: '830030728492',
+    projectId: 'mobius-38958',
+    storageBucket: 'mobius-38958.firebasestorage.app',
     iosBundleId: 'com.example.flutterApplication2',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCNjAiQNcQTHBVUO38JZ3S4CML8Mt4rtys',
-    appId: '1:164293553674:web:e614f386a063db1d0e39f3',
-    messagingSenderId: '164293553674',
-    projectId: 'mobiusdatabase',
-    authDomain: 'mobiusdatabase.firebaseapp.com',
-    storageBucket: 'mobiusdatabase.firebasestorage.app',
-    measurementId: 'G-34QF3X7FJ9',
+    apiKey: 'AIzaSyDdAdJjY86j57dg9Yq32qZGtnJfIMGMWoE',
+    appId: '1:830030728492:web:687e8f2b2595de3555b089',
+    messagingSenderId: '830030728492',
+    projectId: 'mobius-38958',
+    authDomain: 'mobius-38958.firebaseapp.com',
+    storageBucket: 'mobius-38958.firebasestorage.app',
+    measurementId: 'G-DHLMS7D70Q',
   );
 
 }

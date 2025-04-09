@@ -4,6 +4,11 @@
 *.pyc
 *.swp
 *.env
+*.firebase
+*google-cloud-sdk
+*google-cloud-cli-456.0.0-linux-x86_64.tar.gz
+*firebase.json
+*google-cloud-sdk-XYZ.tar.gz
 .DS_Store
 .atom/
 .build/

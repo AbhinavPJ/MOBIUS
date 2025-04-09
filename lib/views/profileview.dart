@@ -26,6 +26,7 @@ class _ProfileViewState extends State<ProfileView> {
   late Groq groq;
   bool isApiReady = false;
   bool _isEditingName = false;
+  bool _isEditingphone = false;
   bool _isEditingHangout = false;
   bool _isEditingClubs = false;
   bool _isEditingMovieGenres = false;
@@ -34,6 +35,7 @@ class _ProfileViewState extends State<ProfileView> {
   bool _isUploadingImage = false;
   String profilepictureurl = "";
   late TextEditingController _nameController;
+  late TextEditingController _phoneController;
   List<String> _selectedClubs = [];
   List<String> _selectedMovieGenres = [];
   List<String> _selectedMusicGenres = [];
@@ -119,6 +121,7 @@ class _ProfileViewState extends State<ProfileView> {
     super.initState();
     initializeGroq();
     _nameController = TextEditingController(text: widget.profile.name);
+    _phoneController = TextEditingController(text: widget.profile.number);
     _selectedClubs = List<String>.from(widget.profile.clubs);
     _selectedMovieGenres = List<String>.from(widget.profile.movieGenres);
     _selectedMusicGenres = List<String>.from(widget.profile.musicGenres);
@@ -435,7 +438,7 @@ Business and Consulting club:Business and consulting club
                     children: [
                       // Name field
                       _buildNameField(),
-
+                      _buildPhoneField(),
                       _buildSingleSelectField(
                         label: "Hangout Spot",
                         isEditing: _isEditingHangout,
@@ -501,12 +504,62 @@ Business and Consulting club:Business and consulting club
                   Navigator.of(context)
                       .pushNamedAndRemoveUntil('/login', (route) => false);
                 }),
+                const SizedBox(height: 30),
+                _buildButton("Delete Account", Colors.red, Colors.white,
+                    () async {
+                  final user = FirebaseAuth.instance.currentUser;
 
+                  if (user != null) {
+                    try {
+                      // Optional: delete user's data from Firestore
+                      await FirebaseFirestore.instance
+                          .collection("users")
+                          .doc(user.uid)
+                          .delete();
+                      await FirebaseFirestore.instance
+                          .collection("surveys")
+                          .doc(user.uid)
+                          .delete();
+
+                      // Delete user from Firebase Auth
+                      await user.delete();
+
+                      // Navigate to login
+                      Navigator.of(context)
+                          .pushNamedAndRemoveUntil('/login', (route) => false);
+                    } on FirebaseAuthException catch (e) {
+                      if (e.code == 'requires-recent-login') {
+                        _showError(
+                            "Please log in again to delete your account.");
+                        await FirebaseAuth.instance.signOut();
+                        Navigator.of(context).pushNamedAndRemoveUntil(
+                            '/login', (route) => false);
+                      } else {
+                        _showError("Error: ${e.message}");
+                      }
+                    }
+                  }
+                }),
                 const SizedBox(height: 30),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -558,6 +611,60 @@ Business and Consulting club:Business and consulting club
               )
             : Text(
                 _nameController.text,
+                style: const TextStyle(fontSize: 16, color: Colors.white),
+              ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildPhoneField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              "Phone no.",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.white,
+              ),
+            ),
+            const Spacer(),
+            IconButton(
+              icon: Icon(
+                _isEditingphone ? Icons.check : Icons.edit,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                if (_isEditingphone) {
+                  _saveProfile('number', _phoneController.text);
+                }
+                setState(() => _isEditingphone = !_isEditingphone);
+              },
+            ),
+          ],
+        ),
+        _isEditingphone
+            ? Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: TextField(
+                  controller: _phoneController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                ),
+              )
+            : Text(
+                _phoneController.text,
                 style: const TextStyle(fontSize: 16, color: Colors.white),
               ),
         const SizedBox(height: 16),

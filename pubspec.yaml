@@ -31,7 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   groq: ^1.0.0
-
+  js: ^0.6.7
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -54,6 +54,9 @@ dependencies:
   google_fonts: ^6.1.0
   geolocator: ^13.0.4
   transparent_image: ^2.0.1
+  flutter_staggered_animations: ^1.1.1
+  opencv_4: ^1.0.0
+  flet: ^0.27.6
 dev_dependencies:
   flutter_launcher_icons: "^0.14.3"
 
@@ -112,6 +115,7 @@ flutter:
         - asset: assets/fonts/Montserrat-Regular.ttf
   # To add assets to your application, add an assets section, like this:
   assets:
+    - assets/haarcascade_frontalface_default.xml
     - assets/secrets.json
     - assets/images/logo.png
     - assets/images/default_avatar.png

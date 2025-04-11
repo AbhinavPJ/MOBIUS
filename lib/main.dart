@@ -10,19 +10,43 @@ import 'firebase_options.dart';
 import 'views/survey.dart';
 import 'views/loginview.dart';
 import 'views/matchmaking.dart';
+import 'dart:js' as js; // Add this import
+
+Future<void> initializeFaceDetection() async {
+  // Wait a moment for JS to initialize
+  await Future.delayed(Duration(seconds: 2));
+
+  try {
+    print('Checking for face detection JS...');
+    print(
+        'Has detectFacesFromBase64: ${js.context.hasProperty('detectFacesFromBase64')}');
+
+    if (js.context.hasProperty('initFaceDetection')) {
+      print('Calling initFaceDetection...');
+      final result = await js.context.callMethod('initFaceDetection');
+      print(
+          'Face detection initialization: ${result == true ? 'successful' : 'failed'}');
+    } else {
+      print('initFaceDetection function not found');
+    }
+  } catch (e) {
+    print('Error initializing face detection: $e');
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => CardProvider()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+  initializeFaceDetection().then((_) {
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => CardProvider()),
+        ],
+        child: const MyApp(),
+      ),
+    );
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -65,7 +89,7 @@ class MyApp extends StatelessWidget {
                 },
               ),
             ),
-        '/login': (context) => const LoginView(),
+        '/login': (context) => const Loginview(),
         '/survey': (context) => const SurveyView(),
         '/register': (context) => const RegisterView(),
         '/verify': (context) => const VerifyEmailView(),

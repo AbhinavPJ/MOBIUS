@@ -1,1 +1,52 @@
-{"hosting":{"public":"public","ignore":["firebase.json","**/.*","**/node_modules/**"],"rewrites":[{"source":"**","destination":"/index.html"}]},"flutter":{"platforms":{"android":{"default":{"projectId":"mobius-38958","appId":"1:830030728492:android:cc52fc88700a34c955b089","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"mobius-38958","appId":"1:830030728492:ios:5f133cdaae8a013b55b089","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"mobius-38958","appId":"1:830030728492:ios:41e07d22325eb8a655b089","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"mobius-38958","configurations":{"android":"1:830030728492:android:cc52fc88700a34c955b089","ios":"1:830030728492:ios:5f133cdaae8a013b55b089","macos":"1:830030728492:ios:41e07d22325eb8a655b089","web":"1:830030728492:web:ed7d9f9cff317f8655b089","windows":"1:830030728492:web:687e8f2b2595de3555b089"}}}}}}
+{
+  "hosting": {
+    "source": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "frameworksBackend": {
+      "region": "asia-east1"
+    }
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "mobius-38958",
+          "appId": "1:830030728492:android:cc52fc88700a34c955b089",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "mobius-38958",
+          "appId": "1:830030728492:ios:5f133cdaae8a013b55b089",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "mobius-38958",
+          "appId": "1:830030728492:ios:41e07d22325eb8a655b089",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "mobius-38958",
+          "configurations": {
+            "android": "1:830030728492:android:cc52fc88700a34c955b089",
+            "ios": "1:830030728492:ios:5f133cdaae8a013b55b089",
+            "macos": "1:830030728492:ios:41e07d22325eb8a655b089",
+            "web": "1:830030728492:web:ed7d9f9cff317f8655b089",
+            "windows": "1:830030728492:web:687e8f2b2595de3555b089"
+          }
+        }
+      }
+    }
+  }
+}

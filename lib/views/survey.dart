@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_2/auth/keys.dart';
 import 'package:groq/groq.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class SurveyView extends StatefulWidget {
   const SurveyView({super.key});
@@ -18,37 +20,27 @@ class SurveyView extends StatefulWidget {
 class _SurveyViewState extends State<SurveyView> {
   late Groq groq;
   bool isApiReady = false;
-  // Image related variables
   File? _imageFile;
   Uint8List? _webImage;
   final ImagePicker _picker = ImagePicker();
   bool _isUploading = false;
   String? _imageUrl;
 
-  // Form controllers
+  String _userDescription = "";
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _entryNumberController = TextEditingController();
-  final TextEditingController _musicGenresController = TextEditingController();
-  final TextEditingController _movieGenresController = TextEditingController();
-  final TextEditingController _hobbiesController = TextEditingController();
-  final TextEditingController _sportsController = TextEditingController();
   final TextEditingController _phonenumbercontroller = TextEditingController();
   final TextEditingController _yearController = TextEditingController();
   final TextEditingController _branchController = TextEditingController();
   final TextEditingController _gendercontroller = TextEditingController();
-  // Focus nodes for each text field
+  late TextEditingController _descriptionController = TextEditingController();
+
   final FocusNode _genderFocusNode = FocusNode();
   final FocusNode _nameFocusNode = FocusNode();
   final FocusNode _branchFocusNode = FocusNode();
   final FocusNode _yearFocusNode = FocusNode();
-  final FocusNode _entryNumberFocusNode = FocusNode();
   final FocusNode _phoneNumberFocusNode = FocusNode();
-  final FocusNode _musicGenresFocusNode = FocusNode();
-  final FocusNode _movieGenresFocusNode = FocusNode();
-  final FocusNode _hobbiesFocusNode = FocusNode();
-  final FocusNode _sportsFocusNode = FocusNode();
 
-  // Dropdown selections
   String? _popularity;
   double? _personality;
   String? _relationshipType;
@@ -62,11 +54,9 @@ class _SurveyViewState extends State<SurveyView> {
   List<String> _tempClubs = [];
   List<String> _selectedSports = [];
   List<String> _selectedClubs = [];
-  String? number;
-  // Multi-page survey tracking
+
   int _currentPage = 0;
 
-  // Dropdown options
   final List<String> _popularityOptions = [
     "Not very popular",
     "Somewhat popular",
@@ -86,7 +76,8 @@ class _SurveyViewState extends State<SurveyView> {
     "Nescafe",
     "Amul",
     "Night mess",
-    "Hostel VR/CR"
+    "Hostel VR/CR",
+    "BT Lawn"
   ];
 
   @override
@@ -98,76 +89,56 @@ class _SurveyViewState extends State<SurveyView> {
   Future<void> initializeGroq() async {
     await Secrets.loadSecrets();
     setState(() {
-      groq = Groq(
-        apiKey: Secrets.groqApiKey, // Load API key securely
-        model: "llama-3.3-70b-versatile",
-      );
+      groq = Groq(apiKey: Secrets.groqApiKey, model: "llama-3.3-70b-versatile");
       isApiReady = true;
     });
   }
 
+  @override
   void dispose() {
-    // Dispose controllers when widget is removed
     _phonenumbercontroller.dispose();
     _entryNumberController.dispose();
-    _musicGenresController.dispose();
-    _movieGenresController.dispose();
-    _hobbiesController.dispose();
-    _sportsController.dispose();
-
-    // Dispose focus nodes
+    _descriptionController.dispose();
+    _genderFocusNode.dispose();
     _nameFocusNode.dispose();
-    _entryNumberFocusNode.dispose();
+    _branchFocusNode.dispose();
+    _yearFocusNode.dispose();
     _phoneNumberFocusNode.dispose();
-    _musicGenresFocusNode.dispose();
-    _movieGenresFocusNode.dispose();
-    _hobbiesFocusNode.dispose();
-    _sportsFocusNode.dispose();
-
     super.dispose();
   }
 
   void _nextPage() {
-    if (_currentPage < 4) {
-      setState(() {
-        _currentPage++;
-      });
-    }
+    if (_currentPage < 5) setState(() => _currentPage++);
   }
 
   void _prevPage() {
-    if (_currentPage > 0) {
-      setState(() {
-        _currentPage--;
-      });
-    }
+    if (_currentPage > 0) setState(() => _currentPage--);
   }
 
   Future<void> _pickImage() async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85, // Optimize image quality
+        imageQuality: 85,
       );
-
       if (pickedFile != null) {
         if (kIsWeb) {
           final bytes = await pickedFile.readAsBytes();
           setState(() {
             _webImage = bytes;
             _imageFile = null;
-            _imageUrl = null; // Reset previous uploaded image
+            _imageUrl = null;
           });
         } else {
           setState(() {
             _imageFile = File(pickedFile.path);
             _webImage = null;
-            _imageUrl = null; // Reset previous uploaded image
+            _imageUrl = null;
           });
         }
       }
     } catch (e) {
-      _showSnackBar("Error picking image: $e", isError: true);
+      print("Error picking image: $e");
     }
   }
 
@@ -176,19 +147,11 @@ class _SurveyViewState extends State<SurveyView> {
       _showSnackBar("Please select an image first", isError: true);
       return;
     }
-
-    setState(() {
-      _isUploading = true;
-    });
-
+    setState(() => _isUploading = true);
     try {
-      // Check user authentication
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception("User not logged in");
-      }
+      if (user == null) throw Exception("User not logged in");
 
-      // Create a unique filename for the image
       final fileName =
           '${user.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final storageRef = FirebaseStorage.instance
@@ -196,44 +159,32 @@ class _SurveyViewState extends State<SurveyView> {
           .child('profile_pictures')
           .child(fileName);
 
-      // Upload based on platform
       late UploadTask uploadTask;
       if (kIsWeb) {
-        if (_webImage == null) {
-          throw Exception("No image selected for web");
-        }
+        if (_webImage == null) throw Exception("No image selected for web");
         final metadata = SettableMetadata(contentType: 'image/jpeg');
         uploadTask = storageRef.putData(_webImage!, metadata);
       } else {
-        if (_imageFile == null) {
-          throw Exception("No image selected for mobile");
-        }
+        if (_imageFile == null) throw Exception("No image selected for mobile");
         uploadTask = storageRef.putFile(_imageFile!);
       }
 
-      // Wait for upload to complete and get download URL
-      final TaskSnapshot snapshot = await uploadTask;
-      final String downloadUrl = await snapshot.ref.getDownloadURL();
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
 
       setState(() {
         _imageUrl = downloadUrl;
         _isUploading = false;
       });
-
       _showSnackBar("Image uploaded successfully");
     } catch (e) {
-      setState(() {
-        _isUploading = false;
-      });
-      print("$e");
+      setState(() => _isUploading = false);
       _showSnackBar("Error uploading image: $e", isError: true);
     }
   }
 
   Future<String> getLLMReply(String prompt) async {
-    if (!isApiReady) {
-      return "LLM is not ready yet.";
-    }
+    if (!isApiReady) return "LLM is not ready yet.";
     groq.startChat();
     GroqResponse response = await groq.sendMessage(prompt);
     return response.choices.first.message.content;
@@ -243,7 +194,7 @@ class _SurveyViewState extends State<SurveyView> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.red : null,
+        backgroundColor: isError ? Colors.red : Colors.green,
       ),
     );
   }
@@ -299,84 +250,45 @@ Business and Consulting club:Business and consulting club
 "Drama club":Drama club,
 "Spic Macay":Classical dance,
 """;
-    return await getLLMReply(promptu);
+    groq.startChat();
+    GroqResponse response = await groq.sendMessage(promptu);
+    return response.choices.first.message.content;
   }
 
   Future<void> _submitSurvey() async {
-    // ✅ Validate Required Fields
-    if (_entryNumberController.text.isEmpty) {
-      _showSnackBar("Please enter your entry number", isError: true);
-      setState(() => _currentPage = 0);
-      return;
-    }
-
-    if (_selectedMovieGenres.isEmpty) {
-      _showSnackBar("Please select at least one movie genre", isError: true);
-      setState(() => _currentPage = 1);
-      return;
-    }
-
-    if (_selectedMusicGenres.isEmpty) {
-      _showSnackBar("Please select at least one music genre", isError: true);
-      setState(() => _currentPage = 1);
-      return;
-    }
-
-    if (_selectedSports.isEmpty) {
-      _showSnackBar("Please select at least one sport", isError: true);
-      setState(() => _currentPage = 2);
-      return;
-    }
-
-    if (_selectedClubs.isEmpty) {
-      _showSnackBar("Please select at least one club", isError: true);
-      setState(() => _currentPage = 2);
-      return;
-    }
-    if (_gender == null) {
-      _showSnackBar("Please enter your gender", isError: true);
-      setState(() {
-        _currentPage = 0;
-      });
-    }
-    if (_personality == null || _hangoutSpot == null || _popularity == null) {
-      _showSnackBar("Please fill all personality questions", isError: true);
-      setState(() => _currentPage = 3);
-      return;
-    }
-
-    if (_relationshipType == null) {
-      _showSnackBar("Please select a relationship type", isError: true);
+    if (_entryNumberController.text.isEmpty ||
+        _selectedMovieGenres.isEmpty ||
+        _selectedMusicGenres.isEmpty ||
+        _selectedSports.isEmpty ||
+        _selectedClubs.isEmpty ||
+        _gender == null ||
+        _personality == null ||
+        _hangoutSpot == null ||
+        _popularity == null ||
+        _relationshipType == null ||
+        _imageUrl == null) {
+      _showSnackBar("Please complete all required fields", isError: true);
       return;
     }
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      _showSnackBar("You need to be logged in to submit a survey",
-          isError: true);
+      _showSnackBar("You need to be logged in", isError: true);
       return;
     }
 
-    // ✅ Upload image if not already uploaded
-    if (_imageUrl == null && (_imageFile != null || _webImage != null)) {
-      await _uploadImage();
-    }
+    String descip = _userDescription.isEmpty || _userDescription == "AI"
+        ? await _generateProfileDescription(
+            _nameController.text,
+            _gender!,
+            _selectedClubs,
+            _selectedSports,
+            _selectedMovieGenres,
+            _selectedMusicGenres,
+            _hangoutSpot!,
+            _relationshipType!)
+        : _userDescription;
 
-    if (_imageUrl == null) {
-      _showSnackBar("Please upload a profile picture before submitting",
-          isError: true);
-      return;
-    }
-    String descip = await _generateProfileDescription(
-        _nameController.text,
-        _gender!,
-        _selectedClubs,
-        _selectedSports,
-        _selectedMovieGenres,
-        _selectedMusicGenres,
-        _hangoutSpot!,
-        _relationshipType!);
-    // ✅ Prepare Survey Data
     final surveyData = {
       "name": _nameController.text,
       "entry_number": _entryNumberController.text,
@@ -398,18 +310,12 @@ Business and Consulting club:Business and consulting club
     };
 
     try {
-      // ✅ Submit to Firestore
       await FirebaseFirestore.instance
           .collection("surveys")
           .doc(user.uid)
           .set(surveyData);
-
       _showSnackBar("Survey Submitted Successfully!");
-
-      // ✅ Navigate to matchmaking screen
-      if (mounted) {
-        Navigator.pushNamed(context, '/home');
-      }
+      if (mounted) Navigator.pushNamed(context, '/home');
     } catch (e) {
       _showSnackBar("Error submitting survey: $e", isError: true);
     }
@@ -418,12 +324,22 @@ Business and Consulting club:Business and consulting club
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: const Color.fromRGBO(165, 18, 178, 0.604),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        title: const Text(
+          'Mobius Survey',
+          style: TextStyle(
+            color: Color(0xFF2E2E2E),
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.logout, color: Color(0xFF2E2E2E)),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
               Navigator.of(context)
@@ -440,95 +356,80 @@ Business and Consulting club:Business and consulting club
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromRGBO(165, 18, 178, 0.604),
-              Color.fromRGBO(189, 148, 215, 1),
+              Color(0xFFE3F2FD), // Soft pastel blue
+              Color(0xFFF3E5F5), // Soft lavender
+              Colors.white,
             ],
+            stops: [0.0, 0.6, 1.0],
           ),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 1,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    "Mobius Survey",
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontFamily: 'PlayfairDisplay-Regular',
-                      fontStyle: FontStyle.italic,
-                      fontWeight: FontWeight.normal,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Image.asset(
-                    'assets/images/logo.png',
-                    height: 80,
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    "Complete your profile to start matching",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color.fromARGB(225, 255, 255, 255),
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 3,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Column(
                   children: [
-                    LinearProgressIndicator(
-                      value: (_currentPage + 1) / 5,
-                      backgroundColor: Colors.white24,
-                      valueColor:
-                          const AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      "Page ${_currentPage + 1} of 5",
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 20),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        child: _buildSurveyPage(_currentPage),
+                    Image.asset('assets/images/logo.png', height: 80),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Complete your profile to start matching",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF424242),
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
+                    const SizedBox(height: 16),
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          if (_currentPage > 0)
-                            _buildButton(
-                                "Back", Colors.white, Colors.black, _prevPage)
-                          else
-                            const SizedBox(width: 80),
-                          _buildButton(
-                            _currentPage == 4 ? "Submit" : "Next",
-                            Colors.white,
-                            Colors.black,
-                            _handleNextPressed,
-                          ),
-                        ],
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: LinearProgressIndicator(
+                        value: (_currentPage + 1) / 6,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFF6C63FF)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Page ${_currentPage + 1} of 6",
+                      style: const TextStyle(
+                        color: Color(0xFF424242),
+                        fontSize: 14,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: KeyedSubtree(
+                  key: ValueKey(_currentPage), // Unique key for each page
+                  child: AnimationLimiter(
+                    child: ListView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 16),
+                      children: _buildSurveyPage(_currentPage),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (_currentPage > 0)
+                      _buildButton("Back", _prevPage)
+                    else
+                      const SizedBox(width: 120),
+                    _buildButton(_currentPage == 5 ? "Submit" : "Next",
+                        _handleNextPressed),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -536,63 +437,44 @@ Business and Consulting club:Business and consulting club
 
   void _handleNextPressed() {
     if (_currentPage == 1) {
-      // ✅ Save selected movie & music genres before moving to the next page
       setState(() {
         _selectedMovieGenres = List.from(_tempMovieGenres);
         _selectedMusicGenres = List.from(_tempMusicGenres);
       });
-
-      print("Selected Movie Genres: $_selectedMovieGenres");
-      print("Selected Music Genres: $_selectedMusicGenres");
     } else if (_currentPage == 2) {
-      // ✅ Save selected sports & clubs before moving to the next page
       setState(() {
         _selectedSports = List.from(_tempSports);
         _selectedClubs = List.from(_tempClubs);
       });
-
-      print("Selected Sports: $_selectedSports");
-      print("Selected Clubs: $_selectedClubs");
     }
-
-    if (_currentPage == 4) {
-      // ✅ If on the last page, submit the survey
+    if (_currentPage == 5) {
       _submitSurvey();
     } else {
-      // ✅ Move to the next page
       _nextPage();
     }
   }
 
-  Widget _buildButton(
-      String text, Color bgColor, Color textColor, VoidCallback onPressed) {
+  Widget _buildButton(String text, VoidCallback onPressed) {
     return SizedBox(
-      width: 150,
-      height: 48,
+      width: 120,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: bgColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
+          backgroundColor: const Color(0xFF6C63FF),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         ),
         onPressed: onPressed,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
     );
   }
 
-  Widget _buildSurveyPage(int index) {
+  List<Widget> _buildSurveyPage(int index) {
     switch (index) {
       case 0:
-        return _buildProfileForm(context);
+        return _buildProfileForm();
       case 1:
         return _buildGenreSelectorPage();
       case 2:
@@ -600,364 +482,220 @@ Business and Consulting club:Business and consulting club
       case 3:
         return _buildPersonalityPage();
       case 4:
+        return _buildDescriptionPage();
+      case 5:
         return _buildFinalPage();
       default:
-        return _buildProfileForm(context);
+        return _buildProfileForm();
     }
   }
 
-  Widget _buildSportsPage() {
-    final List<String> _sportsOptions = [
-      "Badminton",
-      "Squash",
-      "Tennis",
-      "Table tennis",
-      "Atheltics",
-      "Volleyball",
-      "Cricket",
-      "Basketball",
-      "Chess",
-      "Weightlifting",
-      "Competitive programming",
-      "Aquatics",
-    ];
-
-    final List<String> _clubsOptions = [
-      "Aeromodelling",
-      "AXLR8R",
-      "PAC",
-      "ANCC",
-      "DevClub",
-      "Economics club",
-      "Infinity Hyperloop",
-      "Business and Consulting club",
-      "Robotics",
-      "ARIES",
-      "IGTS",
-      "iGEM",
-      "BlocSoc",
-      "PFC",
-      "Music Club",
-      "FACC",
-      "Debsoc",
-      "Lit club",
-      "QC",
-      "Design club",
-      "Dance club",
-      "Drama club",
-      "Spic Macay"
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "What sports do you play?",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Selected Sports
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: _tempSports.map((sport) {
-              return _buildChip(sport, selected: true);
-            }).toList(),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Sports Selection
-          SizedBox(
-            height: 150,
-            child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: _sportsOptions.map((sport) {
-                  return _buildChip(sport,
-                      selected: _tempSports.contains(sport),
-                      onTap: () => _toggleSelection(sport, _tempSports));
-                }).toList(),
+  Widget _buildCard({required Widget child, required int index}) {
+    return AnimationConfiguration.staggeredList(
+      position: index,
+      duration: const Duration(milliseconds: 600),
+      child: SlideAnimation(
+        horizontalOffset: 50.0,
+        child: FadeInAnimation(
+          child: Card(
+            elevation: 6,
+            shadowColor: Colors.black38,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFE3F2FD),
+                    Color(0xFFF3E5F5),
+                    Color(0xFFFFFFFF),
+                  ],
+                  stops: [0.0, 0.6, 1.0],
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: child,
               ),
             ),
           ),
-
-          const SizedBox(height: 30),
-          const Text(
-            "What clubs are you mostly into?",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Selected Clubs
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: _tempClubs.map((club) {
-              return _buildChip(club, selected: true);
-            }).toList(),
-          ),
-
-          const SizedBox(height: 20),
-          const Text(
-            "Choose from the options below:",
-            style: TextStyle(color: Colors.white70, fontSize: 16),
-          ),
-          const SizedBox(height: 10),
-
-          // Clubs Selection
-          SizedBox(
-            height: 150,
-            child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: _clubsOptions.map((club) {
-                  return _buildChip(club,
-                      selected: _tempClubs.contains(club),
-                      onTap: () => _toggleSelection(club, _tempClubs));
-                }).toList(),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildProfileForm(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Tell us about yourself",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+  List<Widget> _buildProfileForm() {
+    return [
+      _buildCard(
+        index: 0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Your Name",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
             ),
-          ),
-          const SizedBox(height: 20),
-
-          // Name field
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: TextField(
+            const SizedBox(height: 8),
+            TextField(
               controller: _nameController,
               focusNode: _nameFocusNode,
               decoration: InputDecoration(
-                hintText: 'Enter your name',
-                hintStyle: TextStyle(
-                    color: Colors.white70), // slightly dimmed for contrast
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.2),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
+                hintText: "Enter your name",
+                hintStyle: TextStyle(color: Colors.black.withOpacity(0.5)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-              style: const TextStyle(color: Colors.white),
-              cursorColor: Colors.white,
-              onSubmitted: (value) {
-                FocusScope.of(context).requestFocus(_yearFocusNode);
-              },
             ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Year and Branch section
-          Text(
-            "Select your current year and branch",
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+          ],
+        ),
+      ),
+      _buildCard(
+        index: 1,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Year & Branch",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
             ),
-          ),
-          const SizedBox(height: 8),
-
-          // Year and Branch row
-          Row(
-            children: [
-              // Year dropdown
-              Expanded(
-                flex: 3,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _yearController.text.isEmpty
-                          ? null
-                          : _yearController.text,
-                      dropdownColor: const Color.fromRGBO(0, 50, 100, 1),
-                      focusNode: _yearFocusNode,
-                      hint: const Text(
-                        "Current Year",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      isExpanded: true,
-                      icon: const Icon(Icons.arrow_drop_down,
-                          color: Colors.white),
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                      items: [
-                        'First Year',
-                        'Second Year',
-                        'Third Year',
-                        'Fourth Year',
-                        'Fifth Year',
-                      ].map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (newValue) {
-                        setState(() {
-                          _yearController.text = newValue ?? '';
-                          _updateEntryNumber();
-                        });
-                        FocusScope.of(context).requestFocus(_branchFocusNode);
-                      },
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _yearController.text.isEmpty
+                        ? null
+                        : _yearController.text,
+                    decoration: InputDecoration(
+                      hintText: "Year",
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
+                    items: [
+                      'First Year',
+                      'Second Year',
+                      'Third Year',
+                      'Fourth Year',
+                      'Fifth Year'
+                    ]
+                        .map((value) =>
+                            DropdownMenuItem(value: value, child: Text(value)))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _yearController.text = value ?? '';
+                        _updateEntryNumber();
+                      });
+                    },
                   ),
                 ),
-              ),
-
-              const SizedBox(width: 12),
-
-              // Branch code dropdown
-              Expanded(
-                flex: 2,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _branchController.text.isEmpty
-                          ? null
-                          : _branchController.text,
-                      dropdownColor: const Color.fromRGBO(0, 50, 100, 1),
-                      focusNode: _branchFocusNode,
-                      hint: const Text(
-                        "Branch",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      isExpanded: true,
-                      icon: const Icon(Icons.arrow_drop_down,
-                          color: Colors.white),
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                      items: [
-                        'CS',
-                        'MT',
-                        'EE',
-                        'AM',
-                        'BB',
-                        'TT',
-                        'CE',
-                        'CH',
-                        'CY',
-                        'PH',
-                        'MS',
-                        'ES'
-                      ].map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (newValue) {
-                        setState(() {
-                          _branchController.text = newValue ?? '';
-                          _updateEntryNumber();
-                        });
-                        FocusScope.of(context)
-                            .requestFocus(_phoneNumberFocusNode);
-                      },
+                const SizedBox(width: 16),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _branchController.text.isEmpty
+                        ? null
+                        : _branchController.text,
+                    decoration: InputDecoration(
+                      hintText: "Branch",
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
+                    items: [
+                      'CS',
+                      'MT',
+                      'EE',
+                      'AM',
+                      'BB',
+                      'TT',
+                      'CE',
+                      'CH',
+                      'CY',
+                      'PH',
+                      'MS',
+                      'ES',
+                      'ME',
+                      'DD'
+                    ]
+                        .map((value) =>
+                            DropdownMenuItem(value: value, child: Text(value)))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _branchController.text = value ?? '';
+                        _updateEntryNumber();
+                      });
+                    },
                   ),
                 ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // Phone number field
-          Text(
-            "Contact Information",
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: TextField(
+          ],
+        ),
+      ),
+      _buildCard(
+        index: 2,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Contact & Gender",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
+            ),
+            const SizedBox(height: 8),
+            TextField(
               controller: _phonenumbercontroller,
               focusNode: _phoneNumberFocusNode,
               decoration: InputDecoration(
-                hintText: 'Enter your phone number',
-                hintStyle: TextStyle(color: Colors.white70),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.2),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
+                hintText: "Phone Number",
+                hintStyle: TextStyle(color: Colors.black.withOpacity(0.5)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 contentPadding:
-                    EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-              style: TextStyle(color: Colors.white),
               keyboardType: TextInputType.phone,
-              onSubmitted: (value) {
-                FocusScope.of(context).requestFocus(_genderFocusNode);
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _gendercontroller.text.isEmpty
+                  ? null
+                  : _gendercontroller.text,
+              decoration: InputDecoration(
+                hintText: "Gender",
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              items: ['Male', 'Female']
+                  .map((value) =>
+                      DropdownMenuItem(value: value, child: Text(value)))
+                  .toList(),
+              onChanged: (value) {
+                setState(() {
+                  _gendercontroller.text = value ?? '';
+                  _gender = value;
+                });
               },
             ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // Gender section
-          _buildDropdown("What is your Gender?", ['Male', 'Female'], (value) {
-            setState(() {
-              _gendercontroller.text = value ?? '';
-              _gender = _gendercontroller.text;
-            });
-          }, _gendercontroller.text.isEmpty ? null : _gendercontroller.text),
-        ],
+          ],
+        ),
       ),
-    );
+    ];
   }
 
-// Helper method to update entry number based on year and branch
   void _updateEntryNumber() {
     final yearPrefix = _getYearPrefix(_yearController.text);
     final branchCode = _branchController.text;
@@ -981,93 +719,8 @@ Business and Consulting club:Business and consulting club
     }
   }
 
-  Widget _buildPersonalityPage() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "About Your Personality",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
-          _buildDropdown("How popular are you?", _popularityOptions, (value) {
-            setState(() {
-              _popularity = value;
-            });
-          }, _popularity),
-          const SizedBox(height: 20),
-          _buildSlider(
-            "On a scale of 0.0 to 10.0, where 10.0 is a complete extrovert, which number best describes your personality?",
-            (value) {
-              setState(() {
-                _personality = value;
-              });
-            },
-            _personality ?? 5.0, // Default value in case it's null
-          ),
-          const SizedBox(height: 20),
-          _buildDropdown(
-            "What is your favourite hangout spot in IITD?",
-            _hangoutOptions,
-            (value) {
-              setState(() {
-                _hangoutSpot = value;
-              });
-            },
-            _hangoutSpot,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFinalPage() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Almost Done!",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
-          _buildDropdown("What kind of relationship are you looking for?",
-              _relationshipOptions, (value) {
-            setState(() {
-              _relationshipType = value;
-            });
-          }, _relationshipType),
-          const SizedBox(height: 30),
-          const Center(
-            child: Text(
-              "Upload a Profile Picture",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 15),
-          _buildImageUploadWidget(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGenreSelectorPage() {
-    final List<String> movieGenres = [
+  List<Widget> _buildGenreSelectorPage() {
+    final movieGenres = [
       "Action",
       "Comedy",
       "Drama",
@@ -1081,8 +734,7 @@ Business and Consulting club:Business and consulting club
       "Musical",
       "Adventure"
     ];
-
-    final List<String> musicGenres = [
+    final musicGenres = [
       "Pop",
       "K-Pop",
       "Hip-hop",
@@ -1090,114 +742,344 @@ Business and Consulting club:Business and consulting club
       "Metal",
       "Indie Pop",
       "Bollywood",
+      "Old Hindi",
       "Punjabi",
       "Classical",
       "Southern cinema music",
-      "Rock",
+      "Rock"
     ];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "What kind of movies do you prefer watching?",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+    return [
+      _buildCard(
+        index: 0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Favourite Movie Genres?",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
             ),
-          ),
-          const SizedBox(height: 10),
-
-          // Selected Movie Genres
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: _tempMovieGenres.map((genre) {
-              return _buildChip(genre, selected: true);
-            }).toList(),
-          ),
-
-          const SizedBox(height: 20),
-          const Text(
-            "Choose from the options below:",
-            style: TextStyle(color: Colors.white70, fontSize: 16),
-          ),
-          const SizedBox(height: 10),
-
-          // Movie Genres Selection
-          SizedBox(
-            height: 150,
-            child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: movieGenres.map((genre) {
-                  return _buildChip(genre,
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: movieGenres
+                  .map((genre) => _buildChip(genre,
                       selected: _tempMovieGenres.contains(genre),
-                      onTap: () => _toggleSelection(genre, _tempMovieGenres));
-                }).toList(),
-              ),
+                      onTap: () => _toggleSelection(genre, _tempMovieGenres)))
+                  .toList(),
             ),
-          ),
-
-          const SizedBox(height: 30),
-          const Text(
-            "What kind of music do you generally listen to?",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Selected Music Genres
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: _tempMusicGenres.map((genre) {
-              return _buildChip(genre, selected: true);
-            }).toList(),
-          ),
-
-          const SizedBox(height: 20),
-          const Text(
-            "Choose from the options below:",
-            style: TextStyle(color: Colors.white70, fontSize: 16),
-          ),
-          const SizedBox(height: 10),
-
-          // Music Genres Selection
-          SizedBox(
-            height: 150,
-            child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: musicGenres.map((genre) {
-                  return _buildChip(genre,
-                      selected: _tempMusicGenres.contains(genre),
-                      onTap: () => _toggleSelection(genre, _tempMusicGenres));
-                }).toList(),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
+      _buildCard(
+        index: 1,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Favourite Music Genres?",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: musicGenres
+                  .map((genre) => _buildChip(genre,
+                      selected: _tempMusicGenres.contains(genre),
+                      onTap: () => _toggleSelection(genre, _tempMusicGenres)))
+                  .toList(),
+            ),
+          ],
+        ),
+      ),
+    ];
   }
 
-  void _toggleSelection(String genre, List<String> list) {
-    setState(() {
-      if (list.contains(genre)) {
-        list.remove(genre);
-      } else if (list.length < 5) {
-        list.add(genre);
-      }
-    });
+  List<Widget> _buildSportsPage() {
+    final sportsOptions = [
+      "Badminton",
+      "Squash",
+      "Tennis",
+      "Table tennis",
+      "Athletics",
+      "Volleyball",
+      "Cricket",
+      "Basketball",
+      "Chess",
+      "Weightlifting",
+      "Competitive programming",
+      "Aquatics"
+    ];
+    final clubsOptions = [
+      "Aeromodelling",
+      "AXLR8R",
+      "PAC",
+      "ANCC",
+      "DevClub",
+      "Economics club",
+      "Infinity Hyperloop",
+      "Business and Consulting club",
+      "Robotics",
+      "eDc",
+      "ARIES",
+      "IGTS",
+      "iGEM",
+      "BlocSoc",
+      "PFC",
+      "Music Club",
+      "FACC",
+      "Debsoc",
+      "Lit club",
+      "QC",
+      "Design club",
+      "Dance club",
+      "Drama club",
+      "Spic Macay"
+    ];
+
+    return [
+      _buildCard(
+        index: 0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Favourite Sports?",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: sportsOptions
+                  .map((sport) => _buildChip(sport,
+                      selected: _tempSports.contains(sport),
+                      onTap: () => _toggleSelection(sport, _tempSports)))
+                  .toList(),
+            ),
+          ],
+        ),
+      ),
+      _buildCard(
+        index: 1,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Favourite Clubs?",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: clubsOptions
+                  .map((club) => _buildChip(club,
+                      selected: _tempClubs.contains(club),
+                      onTap: () => _toggleSelection(club, _tempClubs)))
+                  .toList(),
+            ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildPersonalityPage() {
+    return [
+      _buildCard(
+        index: 0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Popularity",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _popularity,
+              decoration: InputDecoration(
+                hintText: "How popular are you?",
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              items: _popularityOptions
+                  .map((value) =>
+                      DropdownMenuItem(value: value, child: Text(value)))
+                  .toList(),
+              onChanged: (value) => setState(() => _popularity = value),
+            ),
+          ],
+        ),
+      ),
+      _buildCard(
+        index: 1,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Personality",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
+            ),
+            const SizedBox(height: 8),
+            Slider(
+              value: _personality ?? 5.0,
+              onChanged: (value) => setState(() => _personality = value),
+              min: 0,
+              max: 10,
+              divisions: 100,
+              label: (_personality ?? 5.0).toStringAsFixed(1),
+              activeColor: const Color(0xFF6C63FF),
+            ),
+            Text(
+              "0 (Introvert) - 10 (Extrovert): ${_personality?.toStringAsFixed(1) ?? '5.0'}",
+              style: TextStyle(color: Colors.black.withOpacity(0.7)),
+            ),
+          ],
+        ),
+      ),
+      _buildCard(
+        index: 2,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Hangout Spot",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _hangoutSpot,
+              decoration: InputDecoration(
+                hintText: "Favorite hangout spot",
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              items: _hangoutOptions
+                  .map((value) =>
+                      DropdownMenuItem(value: value, child: Text(value)))
+                  .toList(),
+              onChanged: (value) => setState(() => _hangoutSpot = value),
+            ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildDescriptionPage() {
+    return [
+      _buildCard(
+        index: 0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Describe yourself,or type AI to let AI describe you.",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _descriptionController,
+              maxLines: 10,
+              decoration: InputDecoration(
+                hintText: "AI",
+                hintStyle: TextStyle(color: Colors.black.withOpacity(0.5)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onChanged: (value) => setState(() => _userDescription = value),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "${_userDescription.length}/500 characters",
+              style: TextStyle(
+                  color: _userDescription.length > 500
+                      ? Colors.red
+                      : Colors.black.withOpacity(0.7)),
+            ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildFinalPage() {
+    return [
+      _buildCard(
+        index: 0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Relationship Type",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _relationshipType,
+              decoration: InputDecoration(
+                hintText: "What are you looking for?",
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              items: _relationshipOptions
+                  .map((value) =>
+                      DropdownMenuItem(value: value, child: Text(value)))
+                  .toList(),
+              onChanged: (value) => setState(() => _relationshipType = value),
+            ),
+          ],
+        ),
+      ),
+      _buildCard(
+        index: 1,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Profile Picture",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E)),
+            ),
+            const SizedBox(height: 16),
+            _buildImageUploadWidget(),
+          ],
+        ),
+      ),
+    ];
   }
 
   Widget _buildChip(String label,
@@ -1205,64 +1087,64 @@ Business and Consulting club:Business and consulting club
     return GestureDetector(
       onTap: onTap,
       child: Chip(
-        label: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.black : Colors.white,
-            fontSize: 12,
-          ),
-        ),
-        backgroundColor:
-            selected ? Color.fromARGB(255, 179, 255, 0) : Colors.grey[850],
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-          side: BorderSide(
-            color: selected ? Colors.redAccent : Colors.transparent,
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        label: Text(label),
+        backgroundColor: selected
+            ? const Color(0xFF6C63FF).withOpacity(0.2)
+            : Colors.grey[200],
+        labelStyle:
+            TextStyle(color: selected ? const Color(0xFF6C63FF) : Colors.black),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
     );
   }
 
+  void _toggleSelection(String item, List<String> list) {
+    setState(() {
+      if (list.contains(item)) {
+        list.remove(item);
+      } else if (list.length < 5) {
+        list.add(item);
+      }
+    });
+  }
+
   Widget _buildImageUploadWidget() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Center(
-          child: Container(
-            width: 150,
-            height: 150,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white, width: 2),
-              borderRadius: BorderRadius.circular(75),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black,
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                )
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(75),
-              child: _getImageWidget(),
-            ),
+        Container(
+          width: 150,
+          height: 150,
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFF6C63FF), width: 2),
+            borderRadius: BorderRadius.circular(75),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(75),
+            child: _getImageWidget(),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton.icon(
               onPressed: _isUploading ? null : _pickImage,
-              icon: const Icon(Icons.photo_library),
+              icon: const Icon(Icons.photo_library, size: 20),
               label: const Text("Select"),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
+                backgroundColor: const Color(0xFF6C63FF),
+                foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
               ),
             ),
             const SizedBox(width: 16),
@@ -1275,30 +1157,34 @@ Business and Consulting club:Business and consulting club
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.cloud_upload),
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : const Icon(Icons.cloud_upload, size: 20),
               label: Text(_isUploading ? "Uploading..." : "Upload"),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
+                backgroundColor: const Color(0xFF6C63FF),
+                foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
               ),
             ),
           ],
         ),
         if (_imageUrl != null)
           Padding(
-            padding: const EdgeInsets.only(top: 16.0),
+            padding: const EdgeInsets.only(top: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                const Icon(Icons.check_circle,
+                    color: Color(0xFF6C63FF), size: 20),
                 const SizedBox(width: 8),
-                Text(
-                  "Image uploaded successfully!",
-                  style: TextStyle(color: Colors.green[200]),
+                const Text(
+                  "Uploaded!",
+                  style: TextStyle(
+                      color: Color(0xFF6C63FF), fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -1309,126 +1195,18 @@ Business and Consulting club:Business and consulting club
 
   Widget _getImageWidget() {
     if (_imageUrl != null) {
-      return Image.network(
-        _imageUrl!,
-        width: 150,
-        height: 150,
-        fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      (loadingProgress.expectedTotalBytes ?? 1)
-                  : null,
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) => _fallbackImage(),
-      );
+      return Image.network(_imageUrl!,
+          fit: BoxFit.cover, width: 150, height: 150);
     } else if (_webImage != null) {
-      return Image.memory(
-        _webImage!,
-        width: 150,
-        height: 150,
-        fit: BoxFit.cover,
-      );
+      return Image.memory(_webImage!,
+          fit: BoxFit.cover, width: 150, height: 150);
     } else if (_imageFile != null) {
-      return Image.file(
-        _imageFile!,
-        width: 150,
-        height: 150,
-        fit: BoxFit.cover,
-      );
-    } else {
-      return _fallbackImage();
+      return Image.file(_imageFile!,
+          fit: BoxFit.cover, width: 150, height: 150);
     }
-  }
-
-  Widget _fallbackImage() {
     return Container(
-      color: Colors.grey[800],
-      width: 150,
-      height: 150,
-      child: const Icon(
-        Icons.person,
-        size: 80,
-        color: Colors.white,
-      ),
-    );
-  }
-
-  Widget _buildDropdown(String title, List<String> options,
-      ValueChanged<String?> onChanged, String? selectedValue) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16)),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              dropdownColor: const Color.fromRGBO(0, 50, 100, 1),
-              value: selectedValue,
-              hint: const Text(
-                "Select an option",
-                style: TextStyle(color: Colors.white),
-              ),
-              isExpanded: true,
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-              items: options
-                  .map((e) => DropdownMenuItem(
-                        value: e,
-                        child: Text(e,
-                            style: const TextStyle(color: Colors.white)),
-                      ))
-                  .toList(),
-              onChanged: onChanged,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSlider(
-      String title, ValueChanged<double> onChanged, double val) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16.0,
-            color: Colors.white,
-          ),
-        ),
-        Slider(
-          label: val.toStringAsFixed(1),
-          value: val,
-          onChanged: onChanged,
-          min: 0,
-          max: 10,
-          divisions: 100, // Optional: Adds discrete steps
-        ),
-        Text(
-          "Your Number: ${val.toStringAsFixed(1)}",
-          style: const TextStyle(
-            fontSize: 18.0,
-            color: Colors.white,
-          ),
-        ),
-      ],
+      color: Colors.grey[300],
+      child: const Icon(Icons.person, size: 80, color: Colors.white),
     );
   }
 }

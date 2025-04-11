@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_2/views/achievementsview.dart';
 import 'package:flutter_application_2/views/animatedmatch.dart';
 import 'package:flutter_application_2/views/card_provider.dart';
+import 'package:flutter_application_2/views/confessions.dart';
 import 'package:flutter_application_2/views/mymatchesview.dart';
 import 'package:flutter_application_2/views/profileview.dart';
 import 'dart:math' as math;
@@ -12,6 +13,7 @@ import 'package:flutter_application_2/views/reviewdatesview.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CustomCacheManager {
   static const key = 'matchmakingImagesCache';
@@ -47,31 +49,35 @@ class MatchmakingProfile {
   final List<String>? rightswipedby;
   final String description;
   final List<String>? heleftwiped;
+  final String? catfishradar;
   // Add a map to store user IDs and their swipe timestamps
   final Map<String, Timestamp>? swipeTimestamps;
-
-  MatchmakingProfile(
-      {required this.userId,
-      required this.name,
-      required this.gender,
-      required this.entryNumber,
-      required this.clubs,
-      required this.hangoutSpot,
-      required this.movieGenres,
-      required this.musicGenres,
-      required this.personality,
-      required this.popularity,
-      required this.profilePicture,
-      required this.relationshipType,
-      required this.sports,
-      required this.timestamp,
-      required this.tagline,
-      required this.hostel,
-      required this.number,
-      required this.rightswipedby,
-      required this.description,
-      this.heleftwiped,
-      this.swipeTimestamps});
+  final bool? hasUpdated;
+  MatchmakingProfile({
+    required this.userId,
+    required this.name,
+    required this.gender,
+    required this.entryNumber,
+    required this.clubs,
+    required this.hangoutSpot,
+    required this.movieGenres,
+    required this.musicGenres,
+    required this.personality,
+    required this.popularity,
+    required this.profilePicture,
+    required this.relationshipType,
+    required this.sports,
+    required this.timestamp,
+    required this.tagline,
+    required this.hostel,
+    required this.number,
+    required this.rightswipedby,
+    required this.description,
+    this.heleftwiped,
+    this.swipeTimestamps,
+    this.hasUpdated,
+    this.catfishradar,
+  });
 
   factory MatchmakingProfile.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
@@ -604,7 +610,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.star, color: Colors.white, size: 18),
+          Icon(Icons.star, color: Colors.white, size: 14),
           const SizedBox(width: 6),
           Text(
             score, // e.g. 8.7
@@ -638,7 +644,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     }
 
     // Calculate constrained values to prevent overflow
-    final borderRadius = math.min(20.0, width * 0.05);
+    final borderRadius = math.min(20.0, width * 0.10);
     final decisionFontSize = math.min(40.0, width * 0.12);
     final iconSize = math.min(50.0, width * 0.15);
     return Container(
@@ -739,6 +745,77 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+            Positioned(
+              top: math.min(16.0, height * 0.03),
+              right: math.min(16.0, width * 0.03),
+              child: PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_vert,
+                  color: Colors.white,
+                ),
+                color: Colors.white,
+                onSelected: (String value) async {
+                  if (value == 'report') {
+                    final subject = 'User Report - ${currentMatch.userId}';
+                    final body = '''
+Hi Team,
+
+I would like to report the following user:
+• Name: ${currentMatch.name}
+• ID: ${currentMatch.userId}
+• Reason: [Brief description of issue]
+• Additional Info: [Optional details]
+
+Please look into this as soon as possible.
+
+Thank you.
+''';
+                    final Uri emailLaunchUri = Uri(
+                      scheme: 'mailto',
+                      path: 'mobius.app.services@gmail.com',
+                      queryParameters: {'subject': subject, 'body': body},
+                    );
+                    final String encodedSubject = Uri.encodeComponent(subject);
+                    final String encodedBody =
+                        Uri.encodeComponent(body).replaceAll('+', '%20');
+
+                    final Uri emailUri = Uri.parse(
+                        'mailto:mobius.app.services@gmail.com?subject=$encodedSubject&body=$encodedBody');
+
+                    if (await canLaunchUrl(emailLaunchUri)) {
+                      await launchUrl(emailUri);
+                    } else {
+                      // Optionally show a snackbar or error dialog
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Could not open email app')),
+                      );
+                    }
+                  }
+                },
+                itemBuilder: (BuildContext context) => [
+                  PopupMenuItem<String>(
+                    value: 'report',
+                    child: Row(
+                      children: [
+                        Text(
+                          '⚠️',
+                          style: TextStyle(fontSize: 16),
+                          selectionColor: Colors.amber,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Report User',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w300,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -763,7 +840,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     }
 
     // Constrain text sizes to prevent overflow
-    final nameSize = math.min(cardWidth * 0.08, 28.0); // Max 28px
+    final nameSize = math.min(cardWidth * 0.15, 28.0); // Max 28px
     //final infoSize = math.min(cardWidth * 0.05, 18.0); // Max 18px
 
     return Column(
@@ -780,7 +857,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
           ),
           overflow: TextOverflow.ellipsis, // Handle text overflow
         ),
-        SizedBox(height: math.min(5.0, cardWidth * 0.01)),
+        SizedBox(height: math.min(5.0, cardWidth * 0.08)),
         buildScoreBadge(displayText)
       ],
     );
@@ -1099,31 +1176,34 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       return "Biotech Department";
     }
     if (code == "CH") {
-      return "Department of Chemical Engineering";
+      return "Chemical Department";
     }
     if (code == "CE") {
-      return "Department of Civil Engineering";
+      return "Civil Department";
     }
     if (code == "EE") {
-      return "Department of Electrical Engineering";
+      return "EE Department";
     }
     if (code == "CS") {
-      return "Department of Computer Science";
+      return "CS Department";
     }
     if (code == "ES") {
       return "Department of Energy Sciences";
     }
     if (code == "MS") {
-      return "Department of Material Sciences";
+      return "Material Science Department";
     }
     if (code == "MT") {
       return "Department of Mathematics";
     }
     if (code == "ME") {
-      return "Department of Mechanical Engineering";
+      return "Mechanical Department";
     }
     if (code == "PH") {
       return "Department of Physics";
+    }
+    if (code == "CY") {
+      return "Chemistry Department";
     }
     return "Textile Department";
   }
@@ -1239,6 +1319,8 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
           icon: Icon(Icons.favorite_border, size: 32),
           label: "",
         ),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.mail_outline_rounded, size: 32), label: "")
       ],
       onTap: (index) {
         switch (index) {
@@ -1303,6 +1385,13 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
                       n10: widget.n10),
                 ));
             break;
+          case 4:
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      ConfessionView(profile: currentUserProfile!),
+                ));
         }
       },
     );
@@ -1356,7 +1445,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
   AppBar _buildAppBar(BuildContext context) {
     return AppBar(
       automaticallyImplyLeading: false,
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       title: Row(
         mainAxisAlignment: MainAxisAlignment.center, // Center items
         children: [
@@ -1442,13 +1531,28 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Show thank you page when no more profiles or flag is set
     if (_showThankYouPage || potentialMatches.isEmpty) {
       return Scaffold(
         appBar: _buildAppBar(context),
+        extendBodyBehindAppBar: true,
         bottomNavigationBar: _buildBottomBar(context),
-        backgroundColor: Colors.white,
-        body: _buildThankYouPage(),
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFE3F2FD), // Soft pastel blue
+                Color(0xFFF3E5F5), // Soft lavender
+                Colors.white,
+              ],
+              stops: [0.0, 0.6, 1.0],
+            ),
+          ),
+          child: _buildThankYouPage(),
+        ),
       );
     }
 
@@ -1456,58 +1560,65 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       _prepareCardStack();
     }
 
-    // Original UI with correctly wired controls
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: _buildAppBar(context),
       bottomNavigationBar: _buildBottomBar(context),
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 5),
-
-            // Card stack takes most of the available space
-            Expanded(
-              child: _buildCardStack(),
-            ),
-
-            // Fixed height for bottom buttons to ensure they're visible
-            Container(
-              height: 80, // Fixed height to ensure visibility
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildCircularButton1(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFE3F2FD), // Soft pastel blue
+              Color(0xFFF3E5F5), // Soft lavender
+              Colors.white,
+            ],
+            stops: [0.0, 0.6, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 5),
+              Expanded(child: _buildCardStack()),
+              Container(
+                height: 80,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildCircularButton1(
                       icon: Icons.close,
                       onPressed: () {
-                        // Handle swipe left/dislike
                         Provider.of<CardProvider>(context, listen: false)
                             .triggerExternalSwipeLeft();
                         _handleSwipeLeft();
-                      }),
-                  const SizedBox(width: 20),
-                  _buildCircularButton3(
+                      },
+                    ),
+                    const SizedBox(width: 20),
+                    _buildCircularButton3(
                       icon: _isCardFlipped
                           ? Icons.flip_to_front
                           : Icons.flip_to_back,
-                      onPressed: () {
-                        // ONLY flip the card here - no state change
-                        _flipCard();
-                      }),
-                  const SizedBox(width: 20),
-                  _buildCircularButton2(
+                      onPressed: _flipCard,
+                    ),
+                    const SizedBox(width: 20),
+                    _buildCircularButton2(
                       icon: Icons.check,
                       onPressed: () {
                         Provider.of<CardProvider>(context, listen: false)
                             .triggerSwipeRightOut();
-                        // Handle swipe right/like
                         _handleSwipeRight();
-                      }),
-                ],
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

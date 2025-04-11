@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_2/views/matchmaking.dart';
 import 'package:flutter_application_2/views/viewprofile.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MyMatchesView extends StatefulWidget {
@@ -306,6 +307,9 @@ class _MyMatchesViewState extends State<MyMatchesView> {
     if (code == "PH") {
       return "Department of Physics";
     }
+    if (code == "CY") {
+      return "Chemistry Department";
+    }
     return "Textile Department";
   }
 
@@ -339,20 +343,21 @@ class _MyMatchesViewState extends State<MyMatchesView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0, // Removes shadow for a clean look
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
-              'assets/images/logo.png', // Replace with your logo path
+              'assets/images/logo.png',
               height: 40,
             ),
             const SizedBox(width: 10),
             const Text(
-              "MOBIUS", // Replace with your app name
+              "MOBIUS",
               style: TextStyle(
                 fontSize: 32,
                 fontFamily: 'Cinzel',
@@ -363,62 +368,46 @@ class _MyMatchesViewState extends State<MyMatchesView> {
           ],
         ),
       ),
-      backgroundColor: Color.fromRGBO(229, 229, 229, 1),
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromARGB(255, 255, 255, 255),
-              Color.fromARGB(255, 255, 255, 255),
+              Color(0xFFE3F2FD), // Soft pastel blue
+              Color(0xFFF3E5F5), // Very soft lavender
+              Colors.white, // Pure white
             ],
+            stops: [0.0, 0.6, 1.0],
           ),
         ),
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  color: Colors.deepOrange,
-                ),
-              )
-            : _matches.isEmpty
-                ? _buildEmptyState()
-                : _buildMatchesList(),
+        child: SafeArea(
+          child: _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF6C63FF),
+                  ),
+                )
+              : _matches.isEmpty
+                  ? _buildEmptyState()
+                  : _buildMatchesList(),
+        ),
       ),
     );
   }
 
   Widget _buildEmptyState() {
     return Center(
-      child: Container(
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.purple.shade50,
-              Colors.purple.shade100,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.purple.shade200.withOpacity(0.5),
-              spreadRadius: 2,
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+      child: _buildAnimatedCard(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.favorite_border_outlined,
               size: 80,
-              color: Colors.purple.shade300,
+              color: const Color(0xFF6C63FF),
             ),
             const SizedBox(height: 20),
             Text(
@@ -426,7 +415,7 @@ class _MyMatchesViewState extends State<MyMatchesView> {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.purple.shade800,
+                color: const Color(0xFF6C63FF),
               ),
               textAlign: TextAlign.center,
             ),
@@ -436,7 +425,7 @@ class _MyMatchesViewState extends State<MyMatchesView> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.purple.shade600,
+                color: const Color(0xFF424242),
               ),
             ),
           ],
@@ -446,48 +435,45 @@ class _MyMatchesViewState extends State<MyMatchesView> {
   }
 
   Widget _buildMatchesList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _matches.length,
-      itemBuilder: (context, index) {
-        final match = _matches[index];
-        return _buildMatchCard(match);
-      },
+    return AnimationLimiter(
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _matches.length,
+        itemBuilder: (context, index) {
+          final match = _matches[index];
+          return AnimationConfiguration.staggeredList(
+            position: index,
+            duration: const Duration(milliseconds: 375),
+            child: SlideAnimation(
+              verticalOffset: 50.0,
+              child: FadeInAnimation(
+                child: _buildMatchCard(match),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildMatchCard(MatchData match) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: const Color.fromARGB(255, 120, 186, 216), width: 2),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFFE3F2FD), // Soft pastel blue
-            const Color(0xFFF3E5F5), // Very soft lavender
-            const Color(0xFFFAFAFA), // Almost white
-          ],
-          stops: [0.0, 0.5, 1.0],
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(15),
+    return _buildAnimatedCard(
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          collapsedIconColor: Colors.black,
-          iconColor: Colors.green,
+          collapsedIconColor: const Color(0xFF6C63FF),
+          iconColor: const Color(0xFF6C63FF),
           backgroundColor: Colors.transparent,
           collapsedBackgroundColor: Colors.transparent,
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.symmetric(horizontal: 16),
           title: Row(
             children: [
               Hero(
                 tag: 'match-${match.userId}',
                 child: CircleAvatar(
                   radius: 34,
-                  backgroundColor: const Color.fromARGB(189, 114, 92, 174),
+                  backgroundColor: const Color(0xFF6C63FF),
                   child: CircleAvatar(
                     radius: 32,
                     backgroundImage: match.profilePicture.isNotEmpty
@@ -510,7 +496,7 @@ class _MyMatchesViewState extends State<MyMatchesView> {
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                        color: Color(0xFF424242),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -526,100 +512,121 @@ class _MyMatchesViewState extends State<MyMatchesView> {
                           "Match Score: ${(match.matchScore % 200).toStringAsFixed(1)}%",
                           style: const TextStyle(
                             fontSize: 14,
-                            color: Colors.black,
+                            color: Color(0xFF424242),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
                   ],
                 ),
               ),
             ],
           ),
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFFE3F2FD), // Soft pastel blue
-                    const Color(0xFFF3E5F5), // Very soft lavender
-                    const Color(0xFFFAFAFA), // Almost white
-                  ],
-                  stops: [0.0, 0.5, 1.0],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(color: Colors.grey),
-                  const SizedBox(height: 8),
-                  _buildContactInfoRow(
-                      Icons.phone, "Phone", match.contactNumber),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF7B61FF), Color(0xFFFF477E)],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.circular(30),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                _buildContactInfoRow(Icons.phone, "Phone", match.contactNumber),
+                const SizedBox(height: 16),
+                Center(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6C63FF), Color(0xFF6C63FF)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       ),
-                      child: ElevatedButton(
-                        onPressed: () => _viewFullProfile(match),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        child: const Text(
-                          "View Description",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _openWhatsApp(match.contactNumber),
-                      icon: const Icon(Icons.chat, color: Colors.white),
-                      label: const Text(
-                        "Chat on WhatsApp",
+                    child: ElevatedButton(
+                      onPressed: () => _viewFullProfile(match),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      child: const Text(
+                        "View Description",
                         style: TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            const Color(0xFF25D366), // WhatsApp green
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 12),
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _openWhatsApp(match.contactNumber),
+                    icon: const Icon(Icons.chat, color: Colors.white),
+                    label: const Text(
+                      "Chat on WhatsApp",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      elevation: 4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnimatedCard({required Widget child}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Card(
+        elevation: 6,
+        shadowColor: Colors.black38,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFFE3F2FD), // Soft pastel blue
+                const Color(0xFFF3E5F5), // Very soft lavender
+                const Color(0xFFFFFFFF), // Pure white
+              ],
+              stops: const [0.0, 0.6, 1.0],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: child,
+          ),
         ),
       ),
     );

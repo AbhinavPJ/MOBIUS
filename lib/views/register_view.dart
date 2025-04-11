@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
@@ -10,10 +11,12 @@ class RegisterView extends StatefulWidget {
   State<RegisterView> createState() => _RegisterViewState();
 }
 
-class _RegisterViewState extends State<RegisterView> {
+class _RegisterViewState extends State<RegisterView>
+    with SingleTickerProviderStateMixin {
   late final TextEditingController _email;
   late final TextEditingController _password;
   bool _agreeToPrivacyPolicy = false;
+  late AnimationController _animationController;
   double iitdLat = 28.5432491;
   double iitdLon = 77.1905945;
 
@@ -21,6 +24,11 @@ class _RegisterViewState extends State<RegisterView> {
   void initState() {
     _email = TextEditingController();
     _password = TextEditingController();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _animationController.forward();
     super.initState();
   }
 
@@ -28,98 +36,164 @@ class _RegisterViewState extends State<RegisterView> {
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: const Color.fromRGBO(165, 18, 178, 0.604),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          return AnimatedPadding(
-            duration: const Duration(milliseconds: 200),
-            padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom),
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color.fromRGBO(165, 18, 178, 0.604),
-                    Color.fromRGBO(189, 148, 215, 1),
-                  ],
-                ),
+          return Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFFE3F2FD), // Soft pastel blue (from AchievementsView)
+                  Color(0xFFF3E5F5), // Very soft lavender
+                  Colors.white, // Pure white
+                ],
+                stops: [0.0, 0.6, 1.0],
               ),
-              child: SingleChildScrollView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 20),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          "MOBIUS",
-                          style: TextStyle(
-                            fontSize: 40,
-                            fontFamily: 'Cinzel',
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+            ),
+            child: AnimatedPadding(
+              duration: const Duration(milliseconds: 200),
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: SafeArea(
+                child: SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  child: AnimationLimiter(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: AnimationConfiguration.toStaggeredList(
+                        duration: const Duration(milliseconds: 600),
+                        childAnimationBuilder: (widget) => SlideAnimation(
+                          horizontalOffset: 50.0,
+                          child: FadeInAnimation(child: widget),
+                        ),
+                        children: [
+                          const SizedBox(height: 20),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                "MOBIUS",
+                                style: TextStyle(
+                                  fontSize: 40,
+                                  fontFamily: 'Cinzel',
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.deepPurpleAccent,
+                                ),
+                              ),
+                              Image.asset(
+                                'assets/images/logo.png',
+                                height: 120,
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                "Swipe. Match. Meet. Exclusively for IITD.",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF424242),
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        Image.asset(
-                          'assets/images/logo.png',
-                          height: 120,
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          "Swipe. Match. Meet. Exclusively for IITD.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color.fromARGB(225, 255, 255, 255),
-                            fontWeight: FontWeight.w400,
+                          const SizedBox(height: 30),
+                          _buildAnimatedCard(
+                            child:
+                                _buildTextField(_email, "Enter email", false),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    _buildTextField(_email, "Enter email", false),
-                    const SizedBox(height: 20),
-                    _buildTextField(_password, "Enter password", true),
-                    const SizedBox(height: 10),
-                    _buildPrivacyPolicyCheckbox(),
-                    const SizedBox(height: 10),
-                    _buildButton(
-                        "Register", Colors.white, Colors.black, _registerUser),
-                    const SizedBox(height: 20),
-                    TextButton(
-                      onPressed: () => Navigator.pushNamed(context, '/login'),
-                      child: const Text(
-                        "Already Registered? Login Here",
-                        style: TextStyle(
-                          color: Colors.deepPurple,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                          const SizedBox(height: 20),
+                          _buildAnimatedCard(
+                            child: _buildTextField(
+                                _password, "Enter password", true),
+                          ),
+                          const SizedBox(height: 15),
+                          _buildAnimatedCard(
+                            child: _buildPrivacyPolicyCheckbox(),
+                          ),
+                          const SizedBox(height: 25),
+                          _buildAnimatedCard(
+                            child: _buildRegisterButton(),
+                          ),
+                          const SizedBox(height: 20),
+                          _buildAnimatedCard(
+                            child: TextButton(
+                              onPressed: () =>
+                                  Navigator.pushNamed(context, '/login'),
+                              child: const Text(
+                                "Already Registered? Login Here",
+                                style: TextStyle(
+                                  color: Color(0xFF6C63FF),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildAnimatedCard({required Widget child}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Card(
+        elevation: 6,
+        shadowColor: Colors.black38,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFFE3F2FD), // Soft pastel blue
+                const Color(0xFFF3E5F5), // Very soft lavender
+                const Color(0xFFFFFFFF), // Pure white
+              ],
+              stops: const [0.0, 0.6, 1.0],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: child,
+          ),
+        ),
       ),
     );
   }
@@ -241,96 +315,105 @@ class _RegisterViewState extends State<RegisterView> {
 
   Widget _buildTextField(
       TextEditingController controller, String hintText, bool isPassword) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30),
-      child: TextField(
-        controller: controller,
-        obscureText: isPassword,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: const TextStyle(color: Colors.white70),
-          filled: true,
-          fillColor: Colors.white.withOpacity(0.2),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
+    return TextField(
+      controller: controller,
+      obscureText: isPassword,
+      style: const TextStyle(color: Color(0xFF424242)),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(color: Colors.black.withOpacity(0.6)),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.5),
+        prefixIcon: Icon(
+          isPassword ? Icons.lock_outline : Icons.email_outlined,
+          color: const Color(0xFF6C63FF),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
         ),
       ),
     );
   }
 
-  Widget _buildButton(
-      String text, Color bgColor, Color textColor, VoidCallback onPressed) {
+  Widget _buildRegisterButton() {
     return SizedBox(
-      width: 200,
-      height: 48,
+      width: double.infinity,
+      height: 50,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: bgColor,
+          backgroundColor: const Color(0xFF6C63FF),
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(15),
           ),
+          elevation: 4,
         ),
-        onPressed: onPressed,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+        onPressed: _registerUser,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.person_add, size: 24),
+            const SizedBox(width: 10),
+            const Text(
+              "Register",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildPrivacyPolicyCheckbox() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          Checkbox(
-            value: _agreeToPrivacyPolicy,
-            onChanged: (bool? value) {
-              setState(() {
-                _agreeToPrivacyPolicy = value!;
-              });
-            },
-          ),
-          Expanded(
-            // Use Expanded to allow text wrapping
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14), // Adjust style as needed
-                children: [
-                  const TextSpan(
-                      text: "By registering, you agree to MOBIUS's "),
-                  TextSpan(
-                    text: "Privacy Policy",
-                    style: const TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const PrivacyPolicyView(),
-                          ),
-                        );
-                      },
-                  ),
-                ],
+    return Row(
+      children: [
+        Checkbox(
+          value: _agreeToPrivacyPolicy,
+          onChanged: (bool? value) {
+            setState(() {
+              _agreeToPrivacyPolicy = value!;
+            });
+          },
+          activeColor: const Color(0xFF6C63FF),
+        ),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(
+                color: Color(0xFF424242),
+                fontSize: 14,
               ),
+              children: [
+                const TextSpan(text: "By registering, you agree to MOBIUS's "),
+                TextSpan(
+                  text: "Privacy Policy",
+                  style: const TextStyle(
+                    color: Color(0xFF6C63FF),
+                    fontWeight: FontWeight.bold,
+                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PrivacyPolicyView(),
+                        ),
+                      );
+                    },
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -440,15 +523,52 @@ If you have any questions about this Privacy Policy, You can contact us:
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text("Privacy Policy"),
-        backgroundColor: const Color.fromRGBO(165, 18, 178, 0.604),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          "Privacy Policy",
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Text(
-          privacyPolicyText,
-          style: const TextStyle(fontSize: 14),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFE3F2FD), // Soft pastel blue
+              Color(0xFFF3E5F5), // Very soft lavender
+              Colors.white, // Pure white
+            ],
+            stops: [0.0, 0.6, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Card(
+              elevation: 6,
+              shadowColor: Colors.black38,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  privacyPolicyText,
+                  style:
+                      const TextStyle(fontSize: 14, color: Color(0xFF424242)),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

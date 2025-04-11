@@ -1,8 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_2/views/matchmaking.dart';
+import 'package:flutter_application_2/views/profileview.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class ReviewDatePage extends StatefulWidget {
   final n1, n2, n3, n4, n5, n6, n7, n8, n9, n10;
@@ -320,6 +323,9 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
     if (code == "PH") {
       return "Department of Physics";
     }
+    if (code == "CY") {
+      return "Chemistry Department";
+    }
     return "Textile Department";
   }
 
@@ -353,20 +359,21 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0, // Removes shadow for a clean look
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
-              'assets/images/logo.png', // Replace with your logo path
+              'assets/images/logo.png',
               height: 40,
             ),
             const SizedBox(width: 10),
             const Text(
-              "MOBIUS", // Replace with your app name
+              "MOBIUS",
               style: TextStyle(
                 fontSize: 32,
                 fontFamily: 'Cinzel',
@@ -383,76 +390,67 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color.fromARGB(255, 255, 255, 255),
-              Color.fromARGB(255, 255, 255, 255),
+              Color(0xFFE3F2FD), // Soft pastel blue (from RegisterView)
+              Color(0xFFF3E5F5), // Very soft lavender
+              Colors.white, // Pure white
             ],
+            stops: [0.0, 0.6, 1.0],
           ),
         ),
         child: _isLoading
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(
-                  color: Colors.deepOrange,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6C63FF)),
                 ),
               )
             : _matches.isEmpty
-                ? _buildEmptyState()
-                : _buildMatchesList(),
+                ? AnimationLimiter(child: _buildEmptyState())
+                : AnimationLimiter(child: _buildMatchesList()),
       ),
     );
   }
 
   Widget _buildEmptyState() {
     return Center(
-      child: Container(
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.purple.shade50,
-              Colors.purple.shade100,
-            ],
+      child: AnimationConfiguration.staggeredGrid(
+        position: 0,
+        duration: const Duration(milliseconds: 600),
+        columnCount: 1,
+        child: SlideAnimation(
+          horizontalOffset: 50.0,
+          child: FadeInAnimation(
+            child: _buildAnimatedCard(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 80,
+                    color: Color(0xFF6C63FF),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "Nothing left to review",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurpleAccent,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    "You've reviewed all your current matches. Keep exploring!",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF424242),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.purple.shade200.withOpacity(0.5),
-              spreadRadius: 2,
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.check_circle_outline,
-              size: 80,
-              color: Colors.purple.shade300,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              "Nothing left to review",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.purple.shade800,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              "You've reviewed all your current matches. Keep exploring!",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.purple.shade600,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -460,38 +458,30 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
 
   Widget _buildMatchesList() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
       itemCount: _matches.length,
       itemBuilder: (context, index) {
         final match = _matches[index];
-        return _buildMatchCard(match);
+        return AnimationConfiguration.staggeredList(
+          position: index,
+          duration: const Duration(milliseconds: 500),
+          child: SlideAnimation(
+            horizontalOffset: 50.0,
+            child: FadeInAnimation(
+              child: _buildMatchCard(match),
+            ),
+          ),
+        );
       },
     );
   }
 
   Widget _buildMatchCard(MatchData match) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: const Color.fromARGB(189, 114, 92, 174), width: 2),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFFE3F2FD), // Soft pastel blue
-            const Color(0xFFF3E5F5), // Very soft lavender
-            const Color(0xFFFAFAFA), // Almost white
-          ],
-          stops: [0.0, 0.5, 1.0],
-        ),
-      ),
+    return _buildAnimatedCard(
       child: ClipRRect(
         borderRadius: BorderRadius.circular(15),
         child: ExpansionTile(
-          collapsedIconColor: Colors.black,
-          iconColor: Colors.black,
+          collapsedIconColor: Color(0xFF6C63FF),
+          iconColor: Color(0xFF6C63FF),
           backgroundColor: Colors.transparent,
           collapsedBackgroundColor: Colors.transparent,
           title: Row(
@@ -500,11 +490,15 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
                 tag: 'match-${match.userId}',
                 child: CircleAvatar(
                   radius: 34,
-                  backgroundColor: const Color.fromARGB(189, 114, 92, 174),
+                  backgroundColor: Color(0xFF6C63FF),
                   child: CircleAvatar(
                     radius: 32,
                     backgroundImage: match.profilePicture.isNotEmpty
-                        ? NetworkImage(match.profilePicture)
+                        ? CachedNetworkImageProvider(
+                            match.profilePicture,
+                            cacheManager:
+                                CustomProfileImageCacheManager.instance,
+                          )
                         : null,
                     child: match.profilePicture.isEmpty
                         ? const Icon(Icons.person,
@@ -537,8 +531,10 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
                         const SizedBox(width: 4),
                         Text(
                           "Match Score: ${(match.matchScore % 200).toStringAsFixed(1)}%",
-                          style: const TextStyle(
-                              fontSize: 14, color: Colors.black),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF424242),
+                          ),
                         ),
                       ],
                     ),
@@ -552,28 +548,56 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFFE3F2FD), // Soft pastel blue
-                    const Color(0xFFF3E5F5), // Very soft lavender
-                    const Color(0xFFFAFAFA), // Almost white
-                  ],
-                  stops: [0.0, 0.5, 1.0],
-                ),
-              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Divider(color: Colors.white30),
+                  const Divider(color: Color(0xFFE3F2FD)),
                   const SizedBox(height: 8),
                   _buildRatingSection(match),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+// Helper method to create styled cards like in RegisterView
+  Widget _buildAnimatedCard({required Widget child}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: Card(
+        elevation: 6,
+        shadowColor: Colors.black38,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFFE3F2FD), // Soft pastel blue
+                const Color(0xFFF3E5F5), // Very soft lavender
+                const Color(0xFFFFFFFF), // Pure white
+              ],
+              stops: const [0.0, 0.6, 1.0],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: child,
+          ),
         ),
       ),
     );

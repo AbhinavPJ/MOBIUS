@@ -1,38 +1,91 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
-
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
+  <meta charset="UTF-8" />
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible" />
+  <meta name="description" content="A new Flutter project." />
+  
   <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="flutter_application_2">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="flutter_application_2" />
+  <link rel="apple-touch-icon" href="icons/Icon-192.png" />
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png" />
 
+  <!-- Manifest -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Title -->
   <title>flutter_application_2</title>
-  <link rel="manifest" href="manifest.json">
+
+  <!-- Base href -->
+  <base href="/" />
+
+  <!-- Load face-api.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+
+  <!-- Load custom face detection JS -->
+  <script defer src="face_detection.js"></script>
+
+  <!-- Face API check -->
+  <script defer>
+    window.addEventListener('load', () => {
+      console.log("Face API loaded check:", typeof faceapi !== 'undefined');
+      if (typeof faceapi === 'undefined') {
+        console.error("❌ CRITICAL ERROR: face-api.js failed to load!");
+      } else {
+        console.log("✅ face-api.js loaded successfully");
+      }
+
+      // Check if models directory is accessible
+      fetch('/models/ssd_mobilenetv1_model-weights_manifest.json')
+        .then(response => {
+          if (response.ok) {
+            console.log("✅ Models directory is accessible");
+          } else {
+            console.error("❌ Models directory not found or not accessible");
+          }
+        })
+        .catch(error => {
+          console.error("❌ Error checking models directory:", error);
+        });
+    });
+  </script>
+
+  <!-- Load Flutter app (last!) -->
+  <script defer src="main.dart.js"></script>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // Show a loader while Flutter initializes
+    document.body.innerHTML = 
+      <div id="loading" style="
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: white;
+      ">
+        <div style="text-align: center;">
+          <h2>Loading...</h2>
+          <p>Please wait while the app initializes</p>
+        </div>
+      </div>
+    ;
+
+    // Remove loader after Flutter's first frame is rendered
+    window.addEventListener('flutter-first-frame', function () {
+      var loader = document.querySelector('#loading');
+      if (loader) {
+        loader.remove();
+      }
+    });
+  </script>
 </body>
 </html>

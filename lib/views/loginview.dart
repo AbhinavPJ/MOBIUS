@@ -1,66 +1,31 @@
-// ignore_for_file: deprecated_member_use, use_build_context_synchronously
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
-class LoginView extends StatefulWidget {
-  const LoginView({super.key});
-
+class Loginview extends StatefulWidget {
+  const Loginview({super.key});
   @override
-  State<LoginView> createState() => _LoginViewState();
+  State<Loginview> createState() => _LoginviewState();
 }
 
-class _LoginViewState extends State<LoginView> {
+class _LoginviewState extends State<Loginview>
+    with SingleTickerProviderStateMixin {
   late final TextEditingController _email;
   late final TextEditingController _password;
+  late AnimationController _animationController;
 
   @override
   void initState() {
     _email = TextEditingController();
     _password = TextEditingController();
-    super.initState();
-  }
-
-  void _showForgotPasswordDialog() {
-    final TextEditingController _resetEmail = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Reset Password"),
-          content: TextField(
-            controller: _resetEmail,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              hintText: "Enter your registered email",
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () async {
-                final email = _resetEmail.text.trim();
-                try {
-                  await FirebaseAuth.instance
-                      .sendPasswordResetEmail(email: email);
-                  Navigator.of(context).pop();
-                  _showError("Password reset email sent");
-                } on FirebaseAuthException catch (e) {
-                  Navigator.of(context).pop();
-                  _showError(e.message ?? "Failed to send reset email");
-                }
-              },
-              child: const Text("Send"),
-            ),
-          ],
-        );
-      },
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
     );
+    _animationController.forward();
+    super.initState();
   }
 
   @override
@@ -70,108 +35,160 @@ class _LoginViewState extends State<LoginView> {
     super.dispose();
   }
 
-  @override
+  Widget _buildLoginButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF6C63FF),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          elevation: 4,
+        ),
+        onPressed: _loginUser,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.login_rounded, size: 24),
+            const SizedBox(width: 10),
+            const Text(
+              "Login",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset:
-          true, // Allows content to move when keyboard appears
+      extendBodyBehindAppBar: true,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: const Color.fromRGBO(165, 18, 178, 0.604),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          return AnimatedPadding(
-            duration: const Duration(milliseconds: 200),
-            padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom),
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color.fromRGBO(165, 18, 178, 0.604),
-                    Color.fromRGBO(189, 148, 215, 1),
-                  ],
-                ),
+          return Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFFE3F2FD), // Soft pastel blue (from AchievementsView)
+                  Color(0xFFF3E5F5), // Very soft lavender
+                  Colors.white, // Pure white
+                ],
+                stops: [0.0, 0.6, 1.0],
               ),
-              child: SingleChildScrollView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 20),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          "MOBIUS",
-                          style: TextStyle(
-                            fontSize: 40,
-                            fontFamily: 'Cinzel',
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+            ),
+            child: AnimatedPadding(
+              duration: const Duration(milliseconds: 200),
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: SafeArea(
+                child: SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  child: AnimationLimiter(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: AnimationConfiguration.toStaggeredList(
+                        duration: const Duration(milliseconds: 600),
+                        childAnimationBuilder: (widget) => SlideAnimation(
+                          horizontalOffset: 50.0,
+                          child: FadeInAnimation(child: widget),
+                        ),
+                        children: [
+                          const SizedBox(height: 15),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                "MOBIUS",
+                                style: TextStyle(
+                                  fontSize: 40,
+                                  fontFamily: 'Cinzel',
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.deepPurpleAccent,
+                                ),
+                              ),
+                              Image.asset(
+                                'assets/images/logo.png',
+                                height: 120,
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                "Swipe. Match. Meet. Exclusively for IITD.",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF424242),
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        Image.asset(
-                          'assets/images/logo.png',
-                          height: 120,
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          "Swipe. Match. Meet. Exclusively for IITD.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color.fromARGB(225, 255, 255, 255),
-                            fontWeight: FontWeight.w400,
+                          const SizedBox(height: 15),
+                          _buildAnimatedCard(
+                            child:
+                                _buildTextField(_email, "Enter email", false),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    _buildTextField(_email, "Enter email", false),
-                    const SizedBox(height: 20),
-                    _buildTextField(_password, "Enter password", true),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 30.0, top: 10),
-                        child: TextButton(
-                          onPressed: _showForgotPasswordDialog,
-                          child: const Text(
-                            "Forgot Password?",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
+                          const SizedBox(height: 15),
+                          _buildAnimatedCard(
+                            child: _buildTextField(
+                                _password, "Enter password", true),
+                          ),
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: GestureDetector(
+                              onTap: _showForgotPasswordDialog,
+                              child: Text(
+                                'Forgot Password?    ',
+                                style: TextStyle(
+                                  color: const Color(
+                                      0xFF6C63FF), // Change to any color you want
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 10),
+                          _buildAnimatedCard(
+                            child: _buildLoginButton(),
+                          ),
+                          const SizedBox(height: 15),
+                          _buildAnimatedCard(
+                            child: TextButton(
+                              onPressed: () =>
+                                  Navigator.pushNamed(context, '/login'),
+                              child: const Text(
+                                "Not Registered yet? Register Here",
+                                style: TextStyle(
+                                  color: Color(0xFF6C63FF),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 30),
-                    _buildButton(
-                        "Login", Colors.white, Colors.black, _loginUser),
-                    const SizedBox(height: 20),
-                    TextButton(
-                      onPressed: () =>
-                          Navigator.pushNamed(context, '/register'),
-                      child: const Text(
-                        "Not Registered? Register Here",
-                        style: TextStyle(
-                          color: Colors.deepPurple,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -240,6 +257,45 @@ class _LoginViewState extends State<LoginView> {
     }
   }
 
+  Widget _buildAnimatedCard({required Widget child}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Card(
+        elevation: 6,
+        shadowColor: Colors.black38,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFFE3F2FD), // Soft pastel blue
+                const Color(0xFFF3E5F5), // Very soft lavender
+                const Color(0xFFFFFFFF), // Pure white
+              ],
+              stops: const [0.0, 0.6, 1.0],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -251,50 +307,69 @@ class _LoginViewState extends State<LoginView> {
 
   Widget _buildTextField(
       TextEditingController controller, String hintText, bool isPassword) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30),
-      child: TextField(
-        enableSuggestions: false,
-        autocorrect: false,
-        controller: controller,
-        obscureText: isPassword,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: const TextStyle(color: Colors.white70),
-          filled: true,
-          fillColor: Colors.white.withOpacity(0.2),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
+    return TextField(
+      controller: controller,
+      obscureText: isPassword,
+      style: const TextStyle(color: Color(0xFF424242)),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(color: Colors.black.withOpacity(0.6)),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.5),
+        prefixIcon: Icon(
+          isPassword ? Icons.lock_outline : Icons.email_outlined,
+          color: const Color(0xFF6C63FF),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
         ),
       ),
     );
   }
 
-  Widget _buildButton(
-      String text, Color bgColor, Color textColor, VoidCallback onPressed) {
-    return SizedBox(
-      width: 200,
-      height: 48,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: bgColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
+  void _showForgotPasswordDialog() {
+    final TextEditingController _resetEmail = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Reset Password"),
+          content: TextField(
+            controller: _resetEmail,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              hintText: "Enter your registered email",
+            ),
           ),
-        ),
-        onPressed: onPressed,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () async {
+                final email = _resetEmail.text.trim();
+                try {
+                  await FirebaseAuth.instance
+                      .sendPasswordResetEmail(email: email);
+                  Navigator.of(context).pop();
+                  _showError("Password reset email sent");
+                } on FirebaseAuthException catch (e) {
+                  Navigator.of(context).pop();
+                  _showError(e.message ?? "Failed to send reset email");
+                }
+              },
+              child: const Text("Send"),
+            ),
+          ],
+        );
+      },
     );
   }
 }

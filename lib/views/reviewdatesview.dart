@@ -2,10 +2,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_application_2/main.dart';
 import 'package:flutter_application_2/views/matchmaking.dart';
 import 'package:flutter_application_2/views/profileview.dart';
+import 'package:flutter_application_2/views/viewprofile.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:groq/groq.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ReviewDatePage extends StatefulWidget {
   final n1, n2, n3, n4, n5, n6, n7, n8, n9, n10;
@@ -31,6 +35,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
   bool _isLoading = true;
   List<MatchData> _matches = [];
   final _currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  List<String> ratedProfiles = [];
 
   @override
   void initState() {
@@ -69,7 +74,6 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
           .doc(_currentUserId)
           .get();
 
-      List<String> ratedProfiles = [];
       if (ratedDoc.exists && ratedDoc.data() != null) {
         ratedProfiles = List<String>.from(ratedDoc['rated'] ?? []);
       }
@@ -85,8 +89,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
         String otherUserId = doc.id;
 
         // Skip if already rated or not mutually right-swiped
-        if (ratedProfiles.contains(otherUserId) ||
-            !myRightSwipes.contains(otherUserId)) {
+        if (!myRightSwipes.contains(otherUserId)) {
           continue;
         }
 
@@ -141,33 +144,22 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
         (_calculatePersonalityOverlap(
             currentUserProfile.personality, profile.personality));
 
-    //print("hereiii");
-    //print(currentUserProfile?.gender);
-
-    //print(currentUserProfile?.entryNumber);
     score +=
         n2 * (ismatchyear(currentUserProfile.entryNumber, profile.entryNumber));
-    // Compare interests
-    //print(profile.entryNumber);
-    //print("ohh fuck");
-    //print(currentUserProfile!.entryNumber);
 
     score +=
         n3 * (ismatchdept(currentUserProfile.entryNumber, profile.entryNumber));
 
-    //print("oh bsdk");
     score += n4 *
         (ismatchpopularity(currentUserProfile.popularity, profile.popularity));
 
     score += n5 *
         (ismatchhangout(currentUserProfile.hangoutSpot, profile.hangoutSpot));
 
-    //print('hereeeeiiiii');
     score += n6 *
         ismatchrelationship(
             currentUserProfile.relationshipType, profile.relationshipType);
 
-    //print("mcccc");
     score += n7 *
         _calculateInterestOverlap(currentUserProfile.sports, profile.sports) *
         2;
@@ -182,7 +174,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
     score += n10 *
         _calculateInterestOverlap(
             currentUserProfile.musicGenres, profile.musicGenres);
-    //print("hereiiiiiiiiiiiii");
+
     if (currentUserProfile.rightswipedby != null &&
         currentUserProfile.rightswipedby!.contains(profile.userId)) {
       return 200.0 +
@@ -204,6 +196,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
         (2000.0 * n1 + n2 + n3 + 2 * n4 + n5 + 3 * n6 + n7 + n8 + n9 + n10);
   }
 
+  // Helper calculations for match score
   double ismatchyear(String s1, String s2) {
     var i = 0;
     while (i < 4) {
@@ -289,7 +282,6 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
 
   String Fetchdept(MatchmakingProfile m) {
     String code = m.entryNumber[4] + m.entryNumber[5];
-    print(code);
     if (code == "AM") {
       return "Department of Applied Mechanics";
     }
@@ -390,22 +382,25 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFFE3F2FD), // Soft pastel blue (from RegisterView)
+              Color(0xFFE3F2FD), // Soft pastel blue
               Color(0xFFF3E5F5), // Very soft lavender
               Colors.white, // Pure white
             ],
             stops: [0.0, 0.6, 1.0],
           ),
         ),
-        child: _isLoading
-            ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6C63FF)),
-                ),
-              )
-            : _matches.isEmpty
-                ? AnimationLimiter(child: _buildEmptyState())
-                : AnimationLimiter(child: _buildMatchesList()),
+        child: SafeArea(
+          child: _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(Color(0xFF6C63FF)),
+                  ),
+                )
+              : _matches.isEmpty
+                  ? AnimationLimiter(child: _buildEmptyState())
+                  : AnimationLimiter(child: _buildMatchesList()),
+        ),
       ),
     );
   }
@@ -423,7 +418,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.check_circle_outline,
                     size: 80,
                     color: Color(0xFF6C63FF),
@@ -447,6 +442,26 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
                       color: Color(0xFF424242),
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6C63FF),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    child: const Text(
+                      "Back to Matches",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -458,6 +473,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
 
   Widget _buildMatchesList() {
     return ListView.builder(
+      padding: const EdgeInsets.only(top: 16, bottom: 24),
       itemCount: _matches.length,
       itemBuilder: (context, index) {
         final match = _matches[index];
@@ -476,97 +492,51 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
   }
 
   Widget _buildMatchCard(MatchData match) {
-    return _buildAnimatedCard(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(15),
-        child: ExpansionTile(
-          collapsedIconColor: Color(0xFF6C63FF),
-          iconColor: Color(0xFF6C63FF),
-          backgroundColor: Colors.transparent,
-          collapsedBackgroundColor: Colors.transparent,
-          title: Row(
-            children: [
-              Hero(
-                tag: 'match-${match.userId}',
-                child: CircleAvatar(
-                  radius: 34,
-                  backgroundColor: Color(0xFF6C63FF),
-                  child: CircleAvatar(
-                    radius: 32,
-                    backgroundImage: match.profilePicture.isNotEmpty
-                        ? CachedNetworkImageProvider(
-                            match.profilePicture,
-                            cacheManager:
-                                CustomProfileImageCacheManager.instance,
-                          )
-                        : null,
-                    child: match.profilePicture.isEmpty
-                        ? const Icon(Icons.person,
-                            size: 32, color: Colors.white70)
-                        : null,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      match.name,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Image.asset(
-                          "assets/images/fire.png",
-                          height: 20,
-                          width: 20,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          "Match Score: ${(match.matchScore % 200).toStringAsFixed(1)}%",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF424242),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(color: Color(0xFFE3F2FD)),
-                  const SizedBox(height: 8),
-                  _buildRatingSection(match),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      return const Text("User not logged in");
+    }
+    return FutureBuilder(
+      future: Future.wait([
+        FirebaseFirestore.instance
+            .collection('surveys')
+            .doc(currentUser.uid)
+            .get(),
+        FirebaseFirestore.instance
+            .collection('surveys')
+            .doc(match.userId)
+            .get(),
+      ]),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.hasError) {
+          return const Text("Error loading profile data.");
+        }
+
+        final userDoc = snapshot.data![0];
+        final matchDoc = snapshot.data![1];
+
+        final cur = MatchmakingProfile.fromFirestore(userDoc);
+        final curmatch = MatchmakingProfile.fromFirestore(matchDoc);
+
+        return _buildMatchCardContent(
+            match, cur, curmatch, match.matchScore % 100);
+      },
     );
   }
 
-// Helper method to create styled cards like in RegisterView
-  Widget _buildAnimatedCard({required Widget child}) {
+  Widget _buildMatchCardContent(MatchData match, MatchmakingProfile cur,
+      MatchmakingProfile curmatch, double matchPercentage) {
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      throw Exception("User not logged in");
+    }
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
       child: Card(
         elevation: 6,
         shadowColor: Colors.black38,
@@ -576,15 +546,335 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
+            gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFFE3F2FD), // Soft pastel blue
-                const Color(0xFFF3E5F5), // Very soft lavender
-                const Color(0xFFFFFFFF), // Pure white
+                Color(0xFFE3F2FD), // Soft pastel blue
+                Color(0xFFF3E5F5), // Very soft lavender
+                Color(0xFFFFFFFF), // Pure white
               ],
-              stops: const [0.0, 0.6, 1.0],
+              stops: [0.0, 0.6, 1.0],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: ExpansionTile(
+              collapsedIconColor: const Color(0xFF6C63FF),
+              iconColor: const Color(0xFF6C63FF),
+              backgroundColor: Colors.transparent,
+              collapsedBackgroundColor: Colors.transparent,
+              title: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Hero(
+                      tag: 'match-${match.userId}',
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF6C63FF).withOpacity(0.2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: CircleAvatar(
+                          radius: 34,
+                          backgroundColor: const Color(0xFF6C63FF),
+                          child: CircleAvatar(
+                            radius: 32,
+                            backgroundImage: match.profilePicture.isNotEmpty
+                                ? CachedNetworkImageProvider(
+                                    match.profilePicture,
+                                    cacheManager:
+                                        CustomProfileImageCacheManager.instance,
+                                  )
+                                : null,
+                            child: match.profilePicture.isEmpty
+                                ? const Icon(Icons.person,
+                                    size: 32, color: Colors.white70)
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            match.name,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2E2E2E),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          PurpleTextWithGroq(
+                            currentUser: cur,
+                            match: curmatch,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurpleAccent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "${matchPercentage.toStringAsFixed(1)}%",
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Divider(
+                        color: Color(0xFFE3F2FD),
+                        thickness: 1.5,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Match Progress Bar (similar to achievement progress)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Match Compatibility',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black.withOpacity(0.7),
+                            ),
+                          ),
+                          Text(
+                            '${matchPercentage.toInt()}%',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TweenAnimationBuilder(
+                        tween: Tween<double>(
+                            begin: 0.0, end: matchPercentage / 100),
+                        duration: const Duration(milliseconds: 800),
+                        curve: Curves.easeInOut,
+                        builder: (context, double value, child) {
+                          return Stack(
+                            children: [
+                              // Background track
+                              Container(
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              // Progress indicator
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  return Container(
+                                    height: 12,
+                                    width: constraints.maxWidth * value,
+                                    decoration: BoxDecoration(
+                                      color: Colors.deepPurpleAccent,
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFFFF5722)
+                                              .withOpacity(0.3),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+
+                      // Rating section if needed
+                      if (!ratedProfiles.contains(match.userId)) ...[
+                        const SizedBox(height: 16),
+                        _buildRatingSection(match),
+                      ],
+
+                      // Contact info - redesigned
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: const Color(0xFFE3F2FD), width: 1),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor:
+                                  const Color(0xFF6C63FF).withOpacity(0.2),
+                              child: const Icon(
+                                Icons.phone,
+                                color: Color(0xFF6C63FF),
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "Phone",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                                Text(
+                                  match.contactNumber,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Buttons
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _viewFullProfile(match),
+                              icon: const Icon(Icons.person_outline,
+                                  color: Colors.white),
+                              label: const Text(
+                                "View Profile",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF6C63FF),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                elevation: 4,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () =>
+                                  _openWhatsApp(match.contactNumber),
+                              icon: const Icon(Icons.chat, color: Colors.white),
+                              label: const Text(
+                                "WhatsApp",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF25D366),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                elevation: 4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper method to create styled cards
+  Widget _buildAnimatedCard({required Widget child}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Card(
+        elevation: 6,
+        shadowColor: Colors.black38,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFE3F2FD), // Soft pastel blue
+                Color(0xFFF3E5F5), // Very soft lavender
+                Color(0xFFFFFFFF), // Pure white
+              ],
+              stops: [0.0, 0.6, 1.0],
             ),
             boxShadow: [
               BoxShadow(
@@ -595,7 +885,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             child: child,
           ),
         ),
@@ -603,61 +893,137 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
     );
   }
 
+  void _openWhatsApp(String phoneNumber) async {
+    final Uri url = Uri.parse("https://wa.me/$phoneNumber");
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      throw 'Could not launch WhatsApp';
+    }
+  }
+
   Widget _buildRatingSection(MatchData match) {
     double _rating = 0.0; // Stores the selected rating
 
     return StatefulBuilder(
       builder: (context, setState) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Text(
-              "Rate this Match",
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black),
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFE3F2FD),
+              width: 1.5,
             ),
-            const SizedBox(height: 10),
-            RatingBar.builder(
-              initialRating: _rating,
-              minRating: 1,
-              direction: Axis.horizontal,
-              allowHalfRating: true,
-              itemCount: 5,
-              itemPadding: const EdgeInsets.symmetric(horizontal: 4.0),
-              itemBuilder: (context, _) =>
-                  const Icon(Icons.star, color: Colors.amber),
-              onRatingUpdate: (rating) {
-                setState(() {
-                  _rating = rating;
-                });
-              },
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () async {
-                await _submitRating(match.userId, _rating, context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepOrange,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.star_border_rounded,
+                    color: Color(0xFF6C63FF),
+                    size: 24,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    "Rate Your Experience",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
               ),
-              child: const Text(
-                "Submit Rating",
-                style: TextStyle(
+              const SizedBox(height: 16),
+              RatingBar.builder(
+                initialRating: _rating,
+                minRating: 1,
+                direction: Axis.horizontal,
+                allowHalfRating: true,
+                itemCount: 5,
+                itemPadding: const EdgeInsets.symmetric(horizontal: 4.0),
+                itemBuilder: (context, _) => const Icon(
+                  Icons.star_rounded,
+                  color: Colors.amber,
+                ),
+                onRatingUpdate: (rating) {
+                  setState(() {
+                    _rating = rating;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _rating > 0
+                    ? () async {
+                        await _submitRating(match.userId, _rating, context);
+                      }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _rating > 0
+                      ? const Color(0xFF6C63FF)
+                      : Colors.grey.withOpacity(0.5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  elevation: _rating > 0 ? 4 : 0,
+                ),
+                child: const Text(
+                  "Submit Rating",
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white),
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
+  }
+
+  void _viewFullProfile(MatchData match) async {
+    try {
+      DocumentSnapshot profileDoc = await FirebaseFirestore.instance
+          .collection('surveys')
+          .doc(match.userId)
+          .get();
+
+      if (!profileDoc.exists || !mounted) return;
+
+      MatchmakingProfile fullProfile =
+          MatchmakingProfile.fromFirestore(profileDoc);
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => vProfileView(profile: fullProfile),
+        ),
+      );
+    } catch (e) {
+      print("Error fetching full profile: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not load the full profile'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Future<Map<String, double>> _fetchCoefficients() async {
@@ -904,4 +1270,306 @@ class MatchData {
     required this.hostel,
     required this.entryNumber,
   });
+}
+
+class PurpleTextWithGroq extends StatefulWidget {
+  final MatchmakingProfile currentUser;
+  final MatchmakingProfile match;
+
+  const PurpleTextWithGroq({
+    Key? key,
+    required this.currentUser,
+    required this.match,
+  }) : super(key: key);
+
+  @override
+  State<PurpleTextWithGroq> createState() => _PurpleTextWithGroqState();
+}
+
+class _PurpleTextWithGroqState extends State<PurpleTextWithGroq> {
+  late Groq groq;
+  bool _isLoading = false;
+  String _displayText = "Can't decide on where do go for your next date?";
+
+  @override
+  void initState() {
+    super.initState();
+    groq = Groq(
+      apiKey: SecretsLoader.groqApiKey,
+      model: "llama3-8b-8192",
+    );
+  }
+
+  Future<void> _askGroq() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Start Groq chat session
+      groq.startChat();
+
+      // Define the prompt
+      final current = widget.currentUser;
+      final match = widget.match;
+
+      String prompt = '''
+here is the format of what you answer should look like:
+<HERE ARE THREE IDEAS:> then start a new line
+<IDEA1> then start a new line
+<IDEA2> then start a new line
+<IDEA3>\n
+Generate exactly three lines,give each line in a new line,you are not supposed to mix date ideas. on line number 'x' you should recommend exactly one object from category x,you can sugarcoat stuff,but give only and exactly 3 lines. Each fact must include one choice from each of the following categories:
+Take into account each person's personality while giving ideas.
+for example two people who play badminton should be recommended to play badminton
+Category 1: Ground beside Mittal between 6–7 PM, Biotech lawn, Walk in campus at night  
+Category 2: Ammy’s coffee in sda market (special recommendation – waffle), Café Coffee Day, Street food tour in Delhi, Have an ice cream at a place of your choice  
+Category 3: Photowalk, Cycle to India Gate, Play Sports, Photo walk around campus, Make an Instagram reel of you dancing  
+
+STRICT NOTE: DO NOT INCLUDE AN INTRODUCTORY LINE.JUST START FROM THE POINTS
+Do not include any introductory or concluding lines. Just output the three facts directly, each as a single line.
+
+Here is the profile of the user:
+Name: ${current.name}  
+Gender: ${current.gender}  
+Hostel: ${current.hostel}  
+Tagline: ${current.tagline}  
+Personality: ${current.personality}  
+Hobbies and Interests: ${current.clubs.join(", ")}, ${current.movieGenres.join(", ")}, ${current.musicGenres.join(", ")}, ${current.sports.join(", ")}  
+Favorite Hangout Spot: ${current.hangoutSpot}  
+Description: ${current.description}  
+
+And here is the potential match:
+Name: ${match.name}  
+Gender: ${match.gender}  
+Personality: ${match.personality}  
+Hobbies and Interests: ${match.clubs.join(", ")}, ${match.movieGenres.join(", ")}, ${match.musicGenres.join(", ")}, ${match.sports.join(", ")}  
+Favorite Hangout Spot: ${match.hangoutSpot}  
+Description: ${match.description}
+
+for referencez,here's what each club means:
+here is what each club means:
+
+Aeromodelling: Design,Construction,Flying of model aircraft by applying aerodynamic analysis
+AXLR8R: Engineers create a superfast open-wheel formula-one style electric car within a year
+PAC: Physics and Astronomy club
+GROQ_API_KE: Algorithms and competitive coding club (Incredibly smart people here)
+DevClub: Association of Frontend,backend,Appdev,Cybersecurity engineers
+Economics club:Economics club
+Business and Consulting club:Business and consulting club
+"Robotics": Robotics club
+"ARIES": AI/ML society of IIT Delhi
+"Infinity hyperloop": work on building a working prototype hyperloop
+"IGTS": Game theory society,
+"iGEM":Biotech/ Bioinformatics related club,
+"BlocSoc": Crypto/blockchain enthusiasts,
+"PFC": Photography and Films club,
+"eDc": entrepreneurship club,
+"Music Club": Musics club,
+"FACC":Painting,designing stuff and designing fashion(creative people here),
+"Debsoc":Debate society,
+"Lit club":Literary club (discuss books,word games),
+"QC": Quizzing club,
+"Design club":Do pretty stuff like UI/UX design,photo editing,graphics, VFX ,
+"Dance club":they dance
+"Drama club":Drama club,
+"Spic Macay":Classical dance,
+
+''';
+      print(prompt);
+      // Send the message and wait for response
+      GroqResponse response = await groq.sendMessage(prompt);
+
+      // Extract response content
+      String groqResponse = response.choices.first.message.content;
+      print(groqResponse);
+      // Update UI
+      setState(() {
+        _isLoading = false;
+        _showBeautifulPopup(context, groqResponse);
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  }
+
+  void _showBeautifulPopup(BuildContext context, String responseText) {
+    // Parse the response text into bullet points (assuming it has line breaks or can be split)
+    List<String> bulletPointse = responseText
+        .split('\n')
+        .where((line) => line.trim().isNotEmpty)
+        .take(4)
+        .toList();
+    List<String> bulletPoints = [];
+    bulletPoints.add(bulletPointse[1].substring(8));
+    bulletPoints.add(bulletPointse[2].substring(8));
+    bulletPoints.add(bulletPointse[3].substring(8));
+    if (bulletPoints.isEmpty) {
+      bulletPoints = ['No matching information available.'];
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              shape: BoxShape.rectangle,
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10.0,
+                  offset: Offset(0.0, 10.0),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  "A hand picked date idea",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.deepPurple.shade700,
+                  ),
+                ),
+                SizedBox(height: 20),
+                // Nature bullet point
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      margin: EdgeInsets.only(top: 3),
+                      child: Icon(
+                        Icons.nature,
+                        color: Colors.deepPurple.shade300,
+                        size: 16,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        bulletPoints.length > 0
+                            ? bulletPoints[0]
+                            : "Nature lover",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+                // Food bullet point
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      margin: EdgeInsets.only(top: 3),
+                      child: Icon(
+                        Icons.restaurant,
+                        color: Colors.deepPurple.shade300,
+                        size: 16,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        bulletPoints.length > 1
+                            ? bulletPoints[1]
+                            : "Food enthusiast",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+                // Fun bullet point
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      margin: EdgeInsets.only(top: 3),
+                      child: Icon(
+                        Icons.celebration,
+                        color: Colors.deepPurple.shade300,
+                        size: 16,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        bulletPoints.length > 2
+                            ? bulletPoints[2]
+                            : "Fun seeker",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 24),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.deepPurple.shade400,
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Text(
+                      "Close",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _askGroq,
+      child: _isLoading
+          ? SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.0,
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(Colors.deepPurple.shade400),
+              ),
+            )
+          : Text(
+              _displayText,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.deepPurple.shade400,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+    );
+  }
 }

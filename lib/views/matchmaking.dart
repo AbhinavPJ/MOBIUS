@@ -6,7 +6,6 @@ import 'package:flutter_application_2/views/achievementsview.dart';
 import 'package:flutter_application_2/views/animatedmatch.dart';
 import 'package:flutter_application_2/views/card_provider.dart';
 import 'package:flutter_application_2/views/confessions.dart';
-import 'package:flutter_application_2/views/mymatchesview.dart';
 import 'package:flutter_application_2/views/profileview.dart';
 import 'dart:math' as math;
 import 'package:flutter_application_2/views/reviewdatesview.dart';
@@ -211,14 +210,41 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       final List<MatchmakingProfile> allProfiles = surveyDocs.docs
           .map((doc) => MatchmakingProfile.fromFirestore(doc))
           .toList();
+      final List<MatchmakingProfile> genderFilteredProfiles =
+          allProfiles.where((profile) {
+        // Get the current user's gender and preferences
+        String currentGender = currentUserProfile!.gender;
+        String profileGender = profile.gender;
 
-      // Current timestamp for cooldown check
+        // Don't show the current user their own profile
+        if (profile.userId == currentUserProfile!.userId) {
+          return false;
+        }
+
+        // If user prefers "Both", they see everyone except themselves
+        if (currentGender == "Both") {
+          return true;
+        }
+
+        // For straight males - show only females
+        if (currentGender == "Male") {
+          return profileGender == "Female" || profileGender == "Both";
+        }
+
+        // For straight females - show only males
+        if (currentGender == "Female") {
+          return profileGender == "Male" || profileGender == "Both";
+        }
+
+        // Default fallback - shouldn't reach here if all cases are covered
+        return false;
+      }).toList();
       final Timestamp now = Timestamp.now();
       final Duration cooldownPeriod = Duration(days: 7);
 
       // Filter out profiles that the user has seen in the past week
       final List<MatchmakingProfile> availableProfiles =
-          allProfiles.where((profile) {
+          genderFilteredProfiles.where((profile) {
         // Check cooldown period
         if (currentUserProfile!.swipeTimestamps != null &&
             currentUserProfile!.swipeTimestamps!.containsKey(profile.userId)) {
@@ -438,9 +464,8 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
                             } else if (status == SwipeStatus.dislike) {
                               _handleSwipeLeft();
                             }
-
-                            provider.resetPosition();
                           }
+                          // provider.resetPosition();
                         },
                         child: cardWidget,
                       ),
@@ -625,37 +650,35 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
     );
   }
 
-// Simplified BuildCard that avoids complex transformations
   Widget BuildCard(MatchmakingProfile currentMatch, String beta, double width,
       double height) {
     final provider = Provider.of<CardProvider>(context, listen: false);
     String decisionText = "";
     Color decisionColor = Colors.transparent;
 
-    // Safely determine swipe direction indicators
+    // Swipe threshold logic
     final dx = provider.position.dx;
     if (dx > 15) {
-      // Add threshold to avoid flickering
-      decisionText = "SMASH";
+      decisionText = "VIBE ✨";
       decisionColor = Color.fromARGB(255, 179, 255, 1);
     } else if (dx < -15) {
-      decisionText = "PASS";
+      decisionText = "Nah 🙅‍♂️";
       decisionColor = Color.fromRGBO(244, 54, 54, 1.0);
     }
 
-    // Calculate constrained values to prevent overflow
     final borderRadius = math.min(20.0, width * 0.10);
-    final decisionFontSize = math.min(40.0, width * 0.12);
+    final decisionFontSize = math.min(50.0, width * 0.12);
     final iconSize = math.min(50.0, width * 0.15);
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 20,
-            spreadRadius: 2,
-            offset: Offset(0, 10), // soft drop shadow
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 25,
+            spreadRadius: 3,
+            offset: Offset(0, 15),
           ),
         ],
       ),
@@ -683,16 +706,12 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
                 ),
                 errorWidget: (context, url, error) => Container(
                   color: Colors.grey[300],
-                  child: Icon(
-                    Icons.error,
-                    color: Colors.red,
-                    size: iconSize,
-                  ),
+                  child: Icon(Icons.error, color: Colors.red, size: iconSize),
                 ),
               ),
             ),
 
-            // Gradient overlay
+            // Gradient overlay at bottom
             Positioned(
               bottom: 0,
               left: 0,
@@ -704,8 +723,8 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
                     colors: [
-                      Colors.black.withOpacity(0.8),
-                      Colors.black.withOpacity(0.3),
+                      Colors.black.withOpacity(0.9),
+                      Colors.black.withOpacity(0.5),
                       Colors.transparent,
                     ],
                   ),
@@ -721,38 +740,70 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
               child: buildInfo(currentMatch, beta, width),
             ),
 
-            // Decision text
+            // Decision overlay text with glowing effect
             if (decisionText.isNotEmpty)
               Positioned(
                 top: math.min(40.0, height * 0.08),
-                left: math.min(50.0, width * 0.1),
-                right: math.min(50.0, width * 0.1),
-                child: Text(
-                  decisionText,
-                  style: TextStyle(
-                    fontSize: decisionFontSize,
-                    fontWeight: FontWeight.bold,
-                    color: decisionColor,
-                    shadows: [
-                      Shadow(
-                        blurRadius: 10,
-                        color: Colors.black.withOpacity(0.5),
-                        offset: Offset(2, 2),
-                      ),
-                    ],
+                left: 0,
+                right: 0,
+                child: Opacity(
+                  opacity: math.min(dx.abs() / 100, 1.0),
+                  child: Transform.translate(
+                    offset: Offset(dx * 0.1, 0),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Stroke
+                        Text(
+                          decisionText,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: decisionFontSize,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: decisionText == "VIBE ✨" ? 3 : 1,
+                            fontFamily: 'Poppins',
+                            foreground: Paint()
+                              ..style = PaintingStyle.stroke
+                              ..strokeWidth = 3
+                              ..color = Colors.black,
+                          ),
+                        ),
+                        // Fill
+                        Text(
+                          decisionText,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: decisionFontSize,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: decisionText == "VIBE ✨" ? 3 : 1,
+                            fontFamily: 'Poppins',
+                            color: decisionColor,
+                            shadows: [
+                              Shadow(
+                                blurRadius: 20,
+                                color: Colors.black.withOpacity(0.7),
+                                offset: Offset(5, 5),
+                              ),
+                              Shadow(
+                                blurRadius: 30,
+                                color: Colors.white.withOpacity(0.5),
+                                offset: Offset(-5, -5),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+
+            // Report popup
             Positioned(
               top: math.min(16.0, height * 0.03),
               right: math.min(16.0, width * 0.03),
               child: PopupMenuButton<String>(
-                icon: Icon(
-                  Icons.more_vert,
-                  color: Colors.white,
-                ),
+                icon: Icon(Icons.more_vert, color: Colors.white),
                 color: Colors.white,
                 onSelected: (String value) async {
                   if (value == 'report') {
@@ -770,22 +821,12 @@ Please look into this as soon as possible.
 
 Thank you.
 ''';
-                    final Uri emailLaunchUri = Uri(
-                      scheme: 'mailto',
-                      path: 'mobius.app.services@gmail.com',
-                      queryParameters: {'subject': subject, 'body': body},
-                    );
-                    final String encodedSubject = Uri.encodeComponent(subject);
-                    final String encodedBody =
-                        Uri.encodeComponent(body).replaceAll('+', '%20');
-
                     final Uri emailUri = Uri.parse(
-                        'mailto:mobius.app.services@gmail.com?subject=$encodedSubject&body=$encodedBody');
+                        'mailto:mobius.app.services@gmail.com?subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body).replaceAll('+', '%20')}');
 
-                    if (await canLaunchUrl(emailLaunchUri)) {
+                    if (await canLaunchUrl(emailUri)) {
                       await launchUrl(emailUri);
                     } else {
-                      // Optionally show a snackbar or error dialog
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Could not open email app')),
                       );
@@ -797,19 +838,10 @@ Thank you.
                     value: 'report',
                     child: Row(
                       children: [
-                        Text(
-                          '⚠️',
-                          style: TextStyle(fontSize: 16),
-                          selectionColor: Colors.amber,
-                        ),
+                        Text('⚠️', style: TextStyle(fontSize: 16)),
                         SizedBox(width: 8),
-                        Text(
-                          'Report User',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w300,
-                            color: Colors.black,
-                          ),
-                        ),
+                        Text('Report User',
+                            style: TextStyle(fontWeight: FontWeight.w300)),
                       ],
                     ),
                   ),
@@ -1308,15 +1340,11 @@ Thank you.
           label: "",
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.rate_review_outlined, size: 32),
+          icon: Icon(Icons.favorite_border, size: 32),
           label: "",
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.emoji_events_outlined, size: 32),
-          label: "",
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.favorite_border, size: 32),
           label: "",
         ),
         BottomNavigationBarItem(
@@ -1325,23 +1353,6 @@ Thank you.
       onTap: (index) {
         switch (index) {
           case 0:
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => MyMatchesView(
-                  n1: widget.n1,
-                  n2: widget.n2,
-                  n3: widget.n3,
-                  n4: widget.n4,
-                  n5: widget.n5,
-                  n6: widget.n6,
-                  n7: widget.n7,
-                  n8: widget.n8,
-                  n9: widget.n9,
-                  n10: widget.n10,
-                ),
-              ),
-            );
             break;
           case 1:
             Navigator.push(
@@ -1369,23 +1380,6 @@ Thank you.
             );
             break;
           case 3:
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MyMatchesView(
-                      n1: widget.n1,
-                      n2: widget.n2,
-                      n3: widget.n3,
-                      n4: widget.n4,
-                      n5: widget.n5,
-                      n6: widget.n6,
-                      n7: widget.n7,
-                      n8: widget.n8,
-                      n9: widget.n9,
-                      n10: widget.n10),
-                ));
-            break;
-          case 4:
             Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1706,7 +1700,7 @@ Thank you.
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => MyMatchesView(
+                    builder: (context) => ReviewDatePage(
                       n1: widget.n1,
                       n2: widget.n2,
                       n3: widget.n3,

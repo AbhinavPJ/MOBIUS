@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_application_2/views/card_provider.dart';
 import 'package:flutter_application_2/views/register_view.dart';
 import 'package:flutter_application_2/views/verifyemailview.dart';
@@ -10,43 +13,36 @@ import 'firebase_options.dart';
 import 'views/survey.dart';
 import 'views/loginview.dart';
 import 'views/matchmaking.dart';
-import 'dart:js' as js; // Add this import
 
-Future<void> initializeFaceDetection() async {
-  // Wait a moment for JS to initialize
-  await Future.delayed(Duration(seconds: 2));
+class SecretsLoader {
+  static Map<String, dynamic>? _secrets;
 
-  try {
-    print('Checking for face detection JS...');
-    print(
-        'Has detectFacesFromBase64: ${js.context.hasProperty('detectFacesFromBase64')}');
+  static Future<void> loadSecrets() async {
+    final String jsonString =
+        await rootBundle.loadString('assets/secrets.json');
+    _secrets = jsonDecode(jsonString);
+  }
 
-    if (js.context.hasProperty('initFaceDetection')) {
-      print('Calling initFaceDetection...');
-      final result = await js.context.callMethod('initFaceDetection');
-      print(
-          'Face detection initialization: ${result == true ? 'successful' : 'failed'}');
-    } else {
-      print('initFaceDetection function not found');
+  static String get groqApiKey {
+    if (_secrets == null) {
+      throw Exception('Secrets not loaded. Call loadSecrets() first.');
     }
-  } catch (e) {
-    print('Error initializing face detection: $e');
+    return _secrets!['GROQ_API_KEY'];
   }
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  initializeFaceDetection().then((_) {
-    runApp(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => CardProvider()),
-        ],
-        child: const MyApp(),
-      ),
-    );
-  });
+  await SecretsLoader.loadSecrets();
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CardProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -247,7 +243,6 @@ class AuthWrapper extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
           if (snapshot.hasData && snapshot.data != null) {
             final user = snapshot.data!;
             if (!user.emailVerified) {

@@ -34,7 +34,8 @@ class _SurveyViewState extends State<SurveyView> {
   final TextEditingController _branchController = TextEditingController();
   final TextEditingController _gendercontroller = TextEditingController();
   late TextEditingController _descriptionController = TextEditingController();
-
+  List<String> _selectedGenders = [];
+  final List<String> _genderOptions = ['Male', 'Female'];
   final FocusNode _genderFocusNode = FocusNode();
   final FocusNode _nameFocusNode = FocusNode();
   final FocusNode _branchFocusNode = FocusNode();
@@ -261,12 +262,23 @@ Business and Consulting club:Business and consulting club
         _selectedMusicGenres.isEmpty ||
         _selectedSports.isEmpty ||
         _selectedClubs.isEmpty ||
-        _gender == null ||
+        _gender == '' ||
         _personality == null ||
         _hangoutSpot == null ||
         _popularity == null ||
         _relationshipType == null ||
         _imageUrl == null) {
+      print(_entryNumberController.text);
+      print(_selectedMovieGenres);
+      print(_selectedMusicGenres);
+      print(_imageUrl.toString());
+      print(_relationshipType);
+      print(_popularity);
+      print(_hangoutSpot);
+      print(_personality.toString());
+      print(_selectedMusicGenres);
+      print(_selectedMovieGenres);
+      print(_personality.toString());
       _showSnackBar("Please complete all required fields", isError: true);
       return;
     }
@@ -649,7 +661,7 @@ Business and Consulting club:Business and consulting club
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Contact & Gender",
+              "Contact ",
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -670,30 +682,62 @@ Business and Consulting club:Business and consulting club
               keyboardType: TextInputType.phone,
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _gendercontroller.text.isEmpty
-                  ? null
-                  : _gendercontroller.text,
-              decoration: InputDecoration(
-                hintText: "Gender",
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              items: ['Male', 'Female']
-                  .map((value) =>
-                      DropdownMenuItem(value: value, child: Text(value)))
-                  .toList(),
-              onChanged: (value) {
-                setState(() {
-                  _gendercontroller.text = value ?? '';
-                  _gender = value;
-                });
-              },
-            ),
+            buildDatingPreferenceCard()
           ],
         ),
       ),
     ];
+  }
+
+  Widget buildDatingPreferenceCard() {
+    return _buildCard(
+      index: 2, // increment index accordingly
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Whom are you interested in dating?",
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2E2E2E)),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _genderOptions
+                .map((gender) => _buildChip(
+                      gender,
+                      selected: _selectedGenders.contains(gender),
+                      onTap: () {
+                        setState(() {
+                          if (_selectedGenders.contains(gender)) {
+                            _selectedGenders.remove(gender);
+                          } else {
+                            _selectedGenders.add(gender);
+                          }
+
+                          if (_selectedGenders.contains('Male') &&
+                              _selectedGenders.contains('Female')) {
+                            _gender = 'Both';
+                          } else if (_selectedGenders.contains('Male')) {
+                            _gender = 'Female';
+                          } else if (_selectedGenders.contains('Female')) {
+                            _gender = 'Male';
+                          } else {
+                            _gender = '';
+                          }
+
+                          _gendercontroller.text = _selectedGenders.join(', ');
+                        });
+                      },
+                    ))
+                .toList(),
+          ),
+        ],
+      ),
+    );
   }
 
   void _updateEntryNumber() {
@@ -1194,9 +1238,35 @@ Business and Consulting club:Business and consulting club
   }
 
   Widget _getImageWidget() {
+    if (_isUploading && (_webImage != null || _imageFile != null)) {
+      // Show local preview during upload
+      if (_webImage != null) {
+        return Image.memory(_webImage!,
+            fit: BoxFit.cover, width: 150, height: 150);
+      } else if (_imageFile != null) {
+        return Image.file(_imageFile!,
+            fit: BoxFit.cover, width: 150, height: 150);
+      }
+    }
+
     if (_imageUrl != null) {
-      return Image.network(_imageUrl!,
-          fit: BoxFit.cover, width: 150, height: 150);
+      return Image.network(
+        _imageUrl!,
+        fit: BoxFit.cover,
+        width: 150,
+        height: 150,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          );
+        },
+      );
     } else if (_webImage != null) {
       return Image.memory(_webImage!,
           fit: BoxFit.cover, width: 150, height: 150);
@@ -1204,6 +1274,7 @@ Business and Consulting club:Business and consulting club
       return Image.file(_imageFile!,
           fit: BoxFit.cover, width: 150, height: 150);
     }
+
     return Container(
       color: Colors.grey[300],
       child: const Icon(Icons.person, size: 80, color: Colors.white),

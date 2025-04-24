@@ -81,6 +81,7 @@ class _ProfileViewState extends State<ProfileView>
     "Tennis",
     "Table tennis",
     "Athletics",
+    "Football",
     "Volleyball",
     "Basketball",
     "Chess",
@@ -134,7 +135,6 @@ class _ProfileViewState extends State<ProfileView>
     "Hip-hop",
     "Rap",
     "Metal",
-    "Indie Pop",
     "Bollywood",
     "Old Hindi"
         "Punjabi",

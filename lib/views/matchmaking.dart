@@ -157,6 +157,9 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
   int currentMatchIndex = 0;
   String? currentDescription;
   bool isLoadingDescription = false;
+  double dx = 0.0;
+  Color overlayColor = Colors.transparent;
+  double overlayOpacity = 0.0;
   var len = 0;
   var L = [];
 
@@ -465,7 +468,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
                               _handleSwipeLeft();
                             }
                           }
-                          // provider.resetPosition();
+                          provider.resetPosition();
                         },
                         child: cardWidget,
                       ),
@@ -492,22 +495,79 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
           )
         ];
       }
+      print("hereee");
+      return Consumer<CardProvider>(
+        builder: (context, provider, child) {
+          final dx = provider.position.dx;
+          Gradient? bgGradient;
 
-      return SafeArea(
-        child: Column(
-          children: [
-            stateIndicators,
-            SizedBox(height: paddingVertical),
-            Expanded(
-              child: Center(
-                child: Stack(
-                  // Removed alignment property to use explicit positioning
-                  children: stackedCards,
+          // Cap the absolute swipe magnitude to a max (e.g., 100)
+          const maxSwipe = 100.0;
+          final swipeStrength = (dx.abs().clamp(0, maxSwipe)) / maxSwipe;
+
+          if (dx > 15) {
+            // Green swipe: vivid linear gradient from right to left
+            bgGradient = LinearGradient(
+              begin: Alignment.centerRight,
+              end: Alignment.centerLeft,
+              colors: [
+                const Color(0xFFB3FF01).withOpacity(0.2 + 0.5 * swipeStrength),
+                const Color(0xFFAAFFAA).withOpacity(0.15 + 0.3 * swipeStrength),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.4, 1.0],
+            );
+          } else if (dx < -15) {
+            // Red swipe: vivid linear gradient from left to right
+            bgGradient = LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                const Color(0xFFFF3B3B).withOpacity(0.3 + 0.5 * swipeStrength),
+                const Color(0xFFFF6A00).withOpacity(0.2 + 0.3 * swipeStrength),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.3, 1.0],
+            );
+          }
+
+          return SafeArea(
+            child: Stack(
+              children: [
+                // Background base color
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.transparent,
+                  ),
                 ),
-              ),
+                // Dynamic gradient overlay based on swipe strength
+                if (bgGradient != null)
+                  Positioned.fill(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 100),
+                      decoration: BoxDecoration(
+                        gradient: bgGradient,
+                      ),
+                    ),
+                  ),
+                // Main content
+                Column(
+                  children: [
+                    stateIndicators,
+                    SizedBox(height: paddingVertical),
+                    Expanded(
+                      child: Center(
+                        child: Stack(
+                          children: stackedCards,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       );
     });
   }
@@ -539,13 +599,38 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                "About Me",
-                style: GoogleFonts.playfairDisplay(
-                  fontSize: titleSize,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+              Row(
+                mainAxisAlignment:
+                    MainAxisAlignment.center, // Center the row content
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _flipCard,
+                    icon: const SizedBox
+                        .shrink(), // Provide an empty icon if you only want the image as label
+                    label: Image.asset(
+                      'assets/images/custom_icon.png',
+                      width: 24,
+                      height: 24,
+                      color: Colors.black,
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      shadowColor: Colors.transparent,
+                    ),
+                  ),
+                  SizedBox(
+                      width:
+                          8), // Add a small gap between the icon and the title
+                  Text(
+                    "About Me",
+                    style: GoogleFonts.playfairDisplay(
+                      fontSize: titleSize,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: math.min(16.0, height * 0.03)),
               Text(
@@ -652,22 +737,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
 
   Widget BuildCard(MatchmakingProfile currentMatch, String beta, double width,
       double height) {
-    final provider = Provider.of<CardProvider>(context, listen: false);
-    String decisionText = "";
-    Color decisionColor = Colors.transparent;
-
-    // Swipe threshold logic
-    final dx = provider.position.dx;
-    if (dx > 15) {
-      decisionText = "VIBE ✨";
-      decisionColor = Color.fromARGB(255, 179, 255, 1);
-    } else if (dx < -15) {
-      decisionText = "Nah 🙅‍♂️";
-      decisionColor = Color.fromRGBO(244, 54, 54, 1.0);
-    }
-
     final borderRadius = math.min(20.0, width * 0.10);
-    final decisionFontSize = math.min(50.0, width * 0.12);
     final iconSize = math.min(50.0, width * 0.15);
 
     return Container(
@@ -711,6 +781,39 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
               ),
             ),
 
+            // Color overlay for swipe direction indication
+            if (overlayOpacity > 0)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin:
+                          dx > 0 ? Alignment.centerRight : Alignment.centerLeft,
+                      end: Alignment.center,
+                      colors: [
+                        overlayColor.withOpacity(overlayOpacity),
+                        overlayColor.withOpacity(0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+            // Directional border glow effect
+            if (overlayOpacity > 0)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(borderRadius),
+                    border: Border.all(
+                      color: overlayColor
+                          .withOpacity(math.min(dx.abs() / 100, 0.8)),
+                      width: 4.0,
+                    ),
+                  ),
+                ),
+              ),
+
             // Gradient overlay at bottom
             Positioned(
               bottom: 0,
@@ -739,65 +842,25 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
               right: math.min(20.0, width * 0.05),
               child: buildInfo(currentMatch, beta, width),
             ),
-
-            // Decision overlay text with glowing effect
-            if (decisionText.isNotEmpty)
-              Positioned(
-                top: math.min(40.0, height * 0.08),
-                left: 0,
-                right: 0,
-                child: Opacity(
-                  opacity: math.min(dx.abs() / 100, 1.0),
-                  child: Transform.translate(
-                    offset: Offset(dx * 0.1, 0),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Stroke
-                        Text(
-                          decisionText,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: decisionFontSize,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: decisionText == "VIBE ✨" ? 3 : 1,
-                            fontFamily: 'Poppins',
-                            foreground: Paint()
-                              ..style = PaintingStyle.stroke
-                              ..strokeWidth = 3
-                              ..color = Colors.black,
-                          ),
-                        ),
-                        // Fill
-                        Text(
-                          decisionText,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: decisionFontSize,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: decisionText == "VIBE ✨" ? 3 : 1,
-                            fontFamily: 'Poppins',
-                            color: decisionColor,
-                            shadows: [
-                              Shadow(
-                                blurRadius: 20,
-                                color: Colors.black.withOpacity(0.7),
-                                offset: Offset(5, 5),
-                              ),
-                              Shadow(
-                                blurRadius: 30,
-                                color: Colors.white.withOpacity(0.5),
-                                offset: Offset(-5, -5),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+            Positioned(
+                top: math.min(16.0, height * 0.03),
+                left: math.min(16.0, width * 0.03),
+                child: ElevatedButton.icon(
+                  onPressed: _flipCard,
+                  icon: const SizedBox
+                      .shrink(), // Provide an empty icon if you only want the image as label
+                  label: Image.asset(
+                    'assets/images/custom_icon.png',
+                    width: 24,
+                    height: 24,
+                    color: Colors.white,
                   ),
-                ),
-              ),
-
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                  ),
+                )),
             // Report popup
             Positioned(
               top: math.min(16.0, height * 0.03),
@@ -1336,19 +1399,19 @@ Thank you.
       type: BottomNavigationBarType.fixed,
       items: const [
         BottomNavigationBarItem(
-          icon: Icon(Icons.home, size: 32),
+          icon: Icon(Icons.home, size: 35),
           label: "",
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.favorite_border, size: 32),
+          icon: Icon(Icons.favorite_border, size: 35),
           label: "",
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.emoji_events_outlined, size: 32),
+          icon: Icon(Icons.emoji_events_outlined, size: 35),
           label: "",
         ),
         BottomNavigationBarItem(
-            icon: Icon(Icons.mail_outline_rounded, size: 32), label: "")
+            icon: Icon(Icons.mail_outline_rounded, size: 35), label: "")
       ],
       onTap: (index) {
         switch (index) {
@@ -1553,6 +1616,23 @@ Thank you.
     if (_stackedProfiles.isEmpty && potentialMatches.isNotEmpty) {
       _prepareCardStack();
     }
+    final provider = Provider.of<CardProvider>(context, listen: false);
+
+    // Swipe threshold logic
+    dx = provider.position.dx;
+    overlayColor = Colors.transparent;
+    overlayOpacity = 0.0;
+
+    // Calculate overlay color and opacity based on swipe direction
+    if (dx > 15) {
+      // Green overlay for right swipe
+      overlayColor = Color.fromARGB(255, 179, 255, 1);
+      overlayOpacity = math.min(dx.abs() / 100, 0.4); // Cap at 40% opacity
+    } else if (dx < -15) {
+      // Red overlay for left swipe
+      overlayColor = Color.fromRGBO(244, 54, 54, 1.0);
+      overlayOpacity = math.min(dx.abs() / 100, 0.4); // Cap at 40% opacity
+    }
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -1561,56 +1641,14 @@ Thank you.
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFE3F2FD), // Soft pastel blue
-              Color(0xFFF3E5F5), // Soft lavender
-              Colors.white,
-            ],
-            stops: [0.0, 0.6, 1.0],
-          ),
+        decoration: BoxDecoration(
+          color: overlayColor,
         ),
         child: SafeArea(
           child: Column(
             children: [
               const SizedBox(height: 5),
               Expanded(child: _buildCardStack()),
-              Container(
-                height: 80,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildCircularButton1(
-                      icon: Icons.close,
-                      onPressed: () {
-                        Provider.of<CardProvider>(context, listen: false)
-                            .triggerExternalSwipeLeft();
-                        _handleSwipeLeft();
-                      },
-                    ),
-                    const SizedBox(width: 20),
-                    _buildCircularButton3(
-                      icon: _isCardFlipped
-                          ? Icons.flip_to_front
-                          : Icons.flip_to_back,
-                      onPressed: _flipCard,
-                    ),
-                    const SizedBox(width: 20),
-                    _buildCircularButton2(
-                      icon: Icons.check,
-                      onPressed: () {
-                        Provider.of<CardProvider>(context, listen: false)
-                            .triggerSwipeRightOut();
-                        _handleSwipeRight();
-                      },
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),

@@ -35,7 +35,7 @@ class _SurveyViewState extends State<SurveyView> {
   final TextEditingController _gendercontroller = TextEditingController();
   late TextEditingController _descriptionController = TextEditingController();
   List<String> _selectedGenders = [];
-  final List<String> _genderOptions = ['Male', 'Female'];
+  final List<String> _genderOptions = ['Men', 'Women'];
   final FocusNode _genderFocusNode = FocusNode();
   final FocusNode _nameFocusNode = FocusNode();
   final FocusNode _branchFocusNode = FocusNode();
@@ -243,6 +243,8 @@ Business and Consulting club:Business and consulting club
 "PFC": Photography and Films club,
 "Music Club": Musics club,
 "FACC":Painting,designing stuff and designing fashion(creative people here),
+"Envogue": Fashion club,
+"Enactus":NGO social service etc. club,
 "Debsoc":Debate society,
 "Lit club":Literary club (discuss books,word games),
 "QC": Quizzing club,
@@ -257,29 +259,58 @@ Business and Consulting club:Business and consulting club
   }
 
   Future<void> _submitSurvey() async {
-    if (_entryNumberController.text.isEmpty ||
-        _selectedMovieGenres.isEmpty ||
-        _selectedMusicGenres.isEmpty ||
-        _selectedSports.isEmpty ||
-        _selectedClubs.isEmpty ||
-        _gender == '' ||
-        _personality == null ||
-        _hangoutSpot == null ||
-        _popularity == null ||
-        _relationshipType == null ||
-        _imageUrl == null) {
-      print(_entryNumberController.text);
-      print(_selectedMovieGenres);
-      print(_selectedMusicGenres);
-      print(_imageUrl.toString());
-      print(_relationshipType);
-      print(_popularity);
-      print(_hangoutSpot);
-      print(_personality.toString());
-      print(_selectedMusicGenres);
-      print(_selectedMovieGenres);
-      print(_personality.toString());
-      _showSnackBar("Please complete all required fields", isError: true);
+    if (_entryNumberController.text.isEmpty) {
+      _showSnackBar("Year/Branch is required", isError: true);
+      return;
+    }
+
+    if (_selectedMovieGenres.isEmpty) {
+      _showSnackBar("Please select at least one movie genre", isError: true);
+      return;
+    }
+
+    if (_selectedMusicGenres.isEmpty) {
+      _showSnackBar("Please select at least one music genre", isError: true);
+      return;
+    }
+
+    if (_selectedSports.isEmpty) {
+      _showSnackBar("Please select at least one sport", isError: true);
+      return;
+    }
+
+    if (_selectedClubs.isEmpty) {
+      _showSnackBar("Please select at least one club", isError: true);
+      return;
+    }
+
+    if (_gender == '') {
+      _showSnackBar("Please select your gender", isError: true);
+      return;
+    }
+
+    if (_personality == null) {
+      _showSnackBar("Please select a personality type", isError: true);
+      return;
+    }
+
+    if (_hangoutSpot == null) {
+      _showSnackBar("Please select a preferred hangout spot", isError: true);
+      return;
+    }
+
+    if (_popularity == null) {
+      _showSnackBar("Please rate your popularity", isError: true);
+      return;
+    }
+
+    if (_relationshipType == null) {
+      _showSnackBar("Please select a relationship type", isError: true);
+      return;
+    }
+
+    if (_imageUrl == null) {
+      _showSnackBar("Please upload a profile image", isError: true);
       return;
     }
 
@@ -382,7 +413,6 @@ Business and Consulting club:Business and consulting club
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Column(
                   children: [
-                    Image.asset('assets/images/logo.png', height: 80),
                     const SizedBox(height: 8),
                     const Text(
                       "Complete your profile to start matching",
@@ -590,16 +620,17 @@ Business and Consulting club:Business and consulting club
                         ? null
                         : _yearController.text,
                     decoration: InputDecoration(
-                      hintText: "Year",
+                      hintText: "Entry Year",
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10)),
                     ),
                     items: [
-                      'First Year',
-                      'Second Year',
-                      'Third Year',
-                      'Fourth Year',
-                      'Fifth Year'
+                      '2019',
+                      '2020',
+                      '2021',
+                      '2022',
+                      '2023',
+                      '2024',
                     ]
                         .map((value) =>
                             DropdownMenuItem(value: value, child: Text(value)))
@@ -624,20 +655,20 @@ Business and Consulting club:Business and consulting club
                           borderRadius: BorderRadius.circular(10)),
                     ),
                     items: [
-                      'CS',
-                      'MT',
-                      'EE',
                       'AM',
                       'BB',
-                      'TT',
                       'CE',
                       'CH',
+                      'CS',
                       'CY',
-                      'PH',
-                      'MS',
+                      'DD',
+                      'EE',
                       'ES',
                       'ME',
-                      'DD'
+                      'MS',
+                      'MT',
+                      'PH',
+                      'TT'
                     ]
                         .map((value) =>
                             DropdownMenuItem(value: value, child: Text(value)))
@@ -718,12 +749,12 @@ Business and Consulting club:Business and consulting club
                             _selectedGenders.add(gender);
                           }
 
-                          if (_selectedGenders.contains('Male') &&
-                              _selectedGenders.contains('Female')) {
+                          if (_selectedGenders.contains('Men') &&
+                              _selectedGenders.contains('Women')) {
                             _gender = 'Both';
-                          } else if (_selectedGenders.contains('Male')) {
+                          } else if (_selectedGenders.contains('Men')) {
                             _gender = 'Female';
-                          } else if (_selectedGenders.contains('Female')) {
+                          } else if (_selectedGenders.contains('Women')) {
                             _gender = 'Male';
                           } else {
                             _gender = '';
@@ -747,20 +778,7 @@ Business and Consulting club:Business and consulting club
   }
 
   String _getYearPrefix(String yearSelection) {
-    switch (yearSelection) {
-      case 'First Year':
-        return '2024';
-      case 'Second Year':
-        return '2023';
-      case 'Third Year':
-        return '2022';
-      case 'Fourth Year':
-        return '2021';
-      case 'Fifth Year':
-        return '2020';
-      default:
-        return '';
-    }
+    return yearSelection;
   }
 
   List<Widget> _buildGenreSelectorPage() {
@@ -856,6 +874,7 @@ Business and Consulting club:Business and consulting club
       "Athletics",
       "Volleyball",
       "Cricket",
+      "Football",
       "Basketball",
       "Chess",
       "Weightlifting",
@@ -880,6 +899,8 @@ Business and Consulting club:Business and consulting club
       "PFC",
       "Music Club",
       "FACC",
+      "Envogue",
+      "Enactus",
       "Debsoc",
       "Lit club",
       "QC",

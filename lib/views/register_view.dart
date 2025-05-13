@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class RegisterView extends StatefulWidget {
@@ -254,44 +253,7 @@ class _RegisterViewState extends State<RegisterView>
   }
 
   Future<bool> _isWithinIITDelhiArea() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      _showError('Location services are disabled.');
-      return false;
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        _showError('Location permission denied.');
-        return false;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      _showError(
-          'Location permissions are permanently denied. Please enable them in settings.');
-      return false;
-    }
-
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-
-    const double iitdLat = 28.5450;
-    const double iitdLon = 77.1926;
-
-    double distanceInMeters = Geolocator.distanceBetween(
-      position.latitude,
-      position.longitude,
-      iitdLat,
-      iitdLon,
-    );
-
-    return distanceInMeters <= 2500; // 2.5 km
+    return true;
   }
 
   Future<void> _sendVerificationEmail(User user) async {

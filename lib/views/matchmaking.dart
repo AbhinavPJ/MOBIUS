@@ -13,6 +13,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:pie_chart/pie_chart.dart';
 
 class CustomCacheManager {
   static const key = 'matchmakingImagesCache';
@@ -162,7 +163,9 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
   double overlayOpacity = 0.0;
   var len = 0;
   var L = [];
-
+  int maleCount = 0;
+  int femaleCount = 0;
+  int bothCount = 0;
   @override
   void initState() {
     super.initState();
@@ -213,6 +216,23 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
       final List<MatchmakingProfile> allProfiles = surveyDocs.docs
           .map((doc) => MatchmakingProfile.fromFirestore(doc))
           .toList();
+
+      for (var profile in allProfiles) {
+        switch (profile.gender) {
+          case 'Male':
+            maleCount++;
+            break;
+          case 'Female':
+            femaleCount++;
+            break;
+          case 'Both':
+            bothCount++;
+            break;
+        }
+      }
+
+      print(
+          'Gender Ratio (Male:Female:Both) = $maleCount:$femaleCount:$bothCount');
       final List<MatchmakingProfile> genderFilteredProfiles =
           allProfiles.where((profile) {
         // Get the current user's gender and preferences
@@ -226,17 +246,17 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
 
         // If user prefers "Both", they see everyone except themselves
         if (currentGender == "Both") {
-          return true;
+          return profileGender == "Both";
         }
 
         // For straight males - show only females
         if (currentGender == "Male") {
-          return profileGender == "Female" || profileGender == "Both";
+          return profileGender == "Female";
         }
 
         // For straight females - show only males
         if (currentGender == "Female") {
-          return profileGender == "Male" || profileGender == "Both";
+          return profileGender == "Male";
         }
 
         // Default fallback - shouldn't reach here if all cases are covered
@@ -501,33 +521,50 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
           final dx = provider.position.dx;
           Gradient? bgGradient;
 
-          // Cap the absolute swipe magnitude to a max (e.g., 100)
           const maxSwipe = 100.0;
           final swipeStrength = (dx.abs().clamp(0, maxSwipe)) / maxSwipe;
 
           if (dx > 15) {
-            // Green swipe: vivid linear gradient from right to left
+            // Green swipe: dynamic gradient that intensifies and moves with swipe
             bgGradient = LinearGradient(
               begin: Alignment.centerRight,
               end: Alignment.centerLeft,
               colors: [
-                const Color(0xFFB3FF01).withOpacity(0.2 + 0.5 * swipeStrength),
-                const Color(0xFFAAFFAA).withOpacity(0.15 + 0.3 * swipeStrength),
+                // Intensify the primary color based on swipe strength
+                const Color(0xFFB3FF01).withOpacity(0.3 + 0.6 * swipeStrength),
+                // Middle transitional color with variable opacity
+                const Color(0xFFAAFFAA).withOpacity(0.2 + 0.4 * swipeStrength),
                 Colors.transparent,
               ],
-              stops: const [0.0, 0.4, 1.0],
+              // Dynamic stops that move based on swipe progress
+              stops: [
+                0.0,
+                0.3 +
+                    (0.2 *
+                        swipeStrength), // Middle stop moves as swipe progresses
+                0.8 + (0.2 * swipeStrength), // End stop extends with swipe
+              ],
             );
           } else if (dx < -15) {
-            // Red swipe: vivid linear gradient from left to right
+            // Red swipe: dynamic gradient that intensifies and moves with swipe
             bgGradient = LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
               colors: [
-                const Color(0xFFFF3B3B).withOpacity(0.3 + 0.5 * swipeStrength),
-                const Color(0xFFFF6A00).withOpacity(0.2 + 0.3 * swipeStrength),
-                Colors.transparent,
+                // Intensify the primary color based on swipe strength
+                const Color(0xFFFF3B3B).withOpacity(0.3 + 0.6 * swipeStrength),
+                // Add a vibrant orange that gets more intense with swipe
+                const Color(0xFFFF6A00).withOpacity(0.2 + 0.5 * swipeStrength),
+                Colors.white54,
               ],
-              stops: const [0.0, 0.3, 1.0],
+              // Dynamic stops that move based on swipe progress
+              stops: [
+                0.0,
+                0.2 +
+                    (0.3 *
+                        swipeStrength), // Middle stop moves as swipe progresses
+                0.7 + (0.3 * swipeStrength), // End stop extends with swipe
+              ],
             );
           }
 
@@ -540,11 +577,12 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
                     color: Colors.transparent,
                   ),
                 ),
-                // Dynamic gradient overlay based on swipe strength
+                // Dynamic gradient overlay with animated properties
                 if (bgGradient != null)
                   Positioned.fill(
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 100),
+                      duration: const Duration(
+                          milliseconds: 80), // Faster response time
                       decoration: BoxDecoration(
                         gradient: bgGradient,
                       ),
@@ -593,57 +631,65 @@ class _MatchmakingScreenState extends State<MatchmakingScreen>
           ),
         ],
       ),
-      child: Padding(
-        padding: EdgeInsets.all(math.min(16.0, width * 0.05)),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.center, // Center the row content
+      child: Stack(
+        children: [
+          // Main content
+          Padding(
+            padding: EdgeInsets.all(math.min(16.0, width * 0.05)),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  ElevatedButton.icon(
-                    onPressed: _flipCard,
-                    icon: const SizedBox
-                        .shrink(), // Provide an empty icon if you only want the image as label
-                    label: Image.asset(
-                      'assets/images/custom_icon.png',
-                      width: 24,
-                      height: 24,
-                      color: Colors.black,
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      elevation: 0,
-                      shadowColor: Colors.transparent,
-                    ),
+                  SizedBox(height: 24), // Add spacing to account for top icon
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "About Me",
+                        style: GoogleFonts.playfairDisplay(
+                          fontSize: titleSize,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(
-                      width:
-                          8), // Add a small gap between the icon and the title
+                  SizedBox(height: math.min(16.0, height * 0.03)),
                   Text(
-                    "About Me",
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: titleSize,
-                      fontWeight: FontWeight.bold,
+                    profile.description,
+                    style: TextStyle(
+                      fontSize: bodySize,
                       color: Colors.black87,
+                      height: 1.5,
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: math.min(16.0, height * 0.03)),
-              Text(
-                profile.description,
-                style: TextStyle(
-                  fontSize: bodySize,
-                  color: Colors.black87,
-                  height: 1.5,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+
+          // Positioned icon in the top-left corner
+          Positioned(
+            top: 12,
+            left: 12,
+            child: ElevatedButton.icon(
+              onPressed: _flipCard,
+              icon: const SizedBox.shrink(),
+              label: Image.asset(
+                'assets/images/custom_icon.png',
+                width: 24,
+                height: 24,
+                color: Colors.black,
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                padding: EdgeInsets.zero,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1265,7 +1311,7 @@ Thank you.
     String code = m.entryNumber[4] + m.entryNumber[5];
     print(code);
     if (code == "AM") {
-      return "Department of Applied Mechanics";
+      return "Applied Mechanics Department";
     }
     if (code == "BB") {
       return "Biotech Department";
@@ -1283,7 +1329,7 @@ Thank you.
       return "CS Department";
     }
     if (code == "ES") {
-      return "Department of Energy Sciences";
+      return "Energy Department";
     }
     if (code == "MS") {
       return "Material Science Department";
@@ -1299,6 +1345,9 @@ Thank you.
     }
     if (code == "CY") {
       return "Chemistry Department";
+    }
+    if (code == "DD") {
+      return "Design Department";
     }
     return "Textile Department";
   }
@@ -1499,18 +1548,121 @@ Thank you.
     });
   }
 
-  AppBar _buildAppBar(BuildContext context) {
+  AppBar _buildAppBar(
+      BuildContext context, int maleCount, int femaleCount, int bothCount) {
     return AppBar(
       automaticallyImplyLeading: false,
       backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (_) {
+              return Dialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFFE3F2FD), // Soft pastel blue
+                        Color(0xFFF3E5F5), // Soft lavender
+                        Color(0xFFFFFFFF), // White
+                      ],
+                      stops: [0.0, 0.6, 1.0],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Ratio-Meter",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2E2E2E),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        "🚹 Male: $maleCount\n🚺 Female: $femaleCount\n⚧ Both: $bothCount",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black.withOpacity(0.8),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: const Color(0xFF6C63FF),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Close"),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: PieChart(
+              dataMap: {
+                "Male": maleCount.toDouble(),
+                "Female": femaleCount.toDouble(),
+                "Both": bothCount.toDouble(),
+              },
+              colorList: [Colors.blue, Colors.pink, Colors.purple],
+              chartRadius: 25,
+              legendOptions: const LegendOptions(showLegends: false),
+              chartValuesOptions:
+                  const ChartValuesOptions(showChartValues: false),
+            ),
+          ),
+        ),
+      ),
       title: Row(
-        mainAxisAlignment: MainAxisAlignment.center, // Center items
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Image.asset(
             'assets/images/logo.png',
             height: 45,
           ),
-          const SizedBox(width: 10), // Add spacing between logo and text
+          const SizedBox(width: 10),
           const Text(
             "MOBIUS",
             style: TextStyle(
@@ -1534,12 +1686,12 @@ Thank you.
                   height: 32,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              ); // Show loading indicator while fetching data
+              );
             }
             if (snapshot.hasError || !snapshot.hasData) {
               return IconButton(
                 icon: const Icon(Icons.error, size: 32, color: Colors.red),
-                onPressed: () {}, // Do nothing on error
+                onPressed: () {},
               );
             }
 
@@ -1590,7 +1742,7 @@ Thank you.
   Widget build(BuildContext context) {
     if (_showThankYouPage || potentialMatches.isEmpty) {
       return Scaffold(
-        appBar: _buildAppBar(context),
+        appBar: _buildAppBar(context, maleCount, femaleCount, bothCount),
         extendBodyBehindAppBar: true,
         bottomNavigationBar: _buildBottomBar(context),
         body: Container(
@@ -1636,7 +1788,7 @@ Thank you.
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: _buildAppBar(context),
+      appBar: _buildAppBar(context, maleCount, femaleCount, bothCount),
       bottomNavigationBar: _buildBottomBar(context),
       body: Container(
         width: double.infinity,
@@ -1766,83 +1918,6 @@ Thank you.
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // Update buildFrontCard method to handle swipe gestures
-
-// Helper method to create consistent circular buttons
-  Widget _buildCircularButton1({
-    required IconData icon,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.red,
-      ),
-      child: IconButton(
-        icon: Icon(
-          icon,
-          color: Colors.white,
-          size: 35,
-        ),
-        onPressed: onPressed,
-        padding: const EdgeInsets.all(12),
-      ),
-    );
-  }
-
-  Widget _buildCircularButton3({
-    required IconData icon,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-        border: Border.all(
-          color: Colors.deepPurpleAccent,
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: IconButton(
-        icon: Icon(
-          icon,
-          color: Colors.deepPurpleAccent,
-          size: 24,
-        ),
-        onPressed: onPressed,
-        padding: const EdgeInsets.all(12),
-      ),
-    );
-  }
-
-  Widget _buildCircularButton2({
-    required IconData icon,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.deepPurpleAccent,
-      ),
-      child: IconButton(
-        icon: Icon(
-          icon,
-          color: Colors.white,
-          size: 35,
-        ),
-        onPressed: onPressed,
-        padding: const EdgeInsets.all(12),
       ),
     );
   }

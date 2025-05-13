@@ -455,7 +455,7 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
                       ),
                     ),
                     child: const Text(
-                      "Back to Matches",
+                      "Back to Playground",
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -1367,6 +1367,8 @@ Business and Consulting club:Business and consulting club
 "eDc": entrepreneurship club,
 "Music Club": Musics club,
 "FACC":Painting,designing stuff and designing fashion(creative people here),
+"Envogue": Fashion club,
+"Enactus":NGO social service etc. club,
 "Debsoc":Debate society,
 "Lit club":Literary club (discuss books,word games),
 "QC": Quizzing club,

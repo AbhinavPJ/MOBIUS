@@ -67,6 +67,11 @@ class _ProfileViewState extends State<ProfileView>
   final ImagePicker _picker = ImagePicker();
   late AnimationController _animationController;
 
+  // Add a scroll controller to handle scrolling when keyboard appears
+  final ScrollController _scrollController = ScrollController();
+  // Add a global key to find the description field's position
+  final GlobalKey _descriptionFieldKey = GlobalKey();
+
   final List<String> _hangoutSpots = [
     "SAC",
     "CCD",
@@ -164,6 +169,31 @@ class _ProfileViewState extends State<ProfileView>
       duration: const Duration(milliseconds: 300),
     );
     _animationController.forward();
+
+    // Add keyboard listener to scroll to the description field when editing
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Listen for keyboard visibility changes
+      final keyboardVisibilityController =
+          MediaQuery.of(context).viewInsets.bottom;
+      if (keyboardVisibilityController > 0 && _isEditingDescription) {
+        _scrollToDescriptionField();
+      }
+    });
+  }
+
+  // Method to scroll to the description field when the keyboard appears
+  void _scrollToDescriptionField() {
+    final keyContext = _descriptionFieldKey.currentContext;
+    if (keyContext != null) {
+      // Add a small delay to ensure the keyboard is fully visible
+      Future.delayed(const Duration(milliseconds: 300), () {
+        Scrollable.ensureVisible(
+          keyContext,
+          alignment: 0.0,
+          duration: const Duration(milliseconds: 300),
+        );
+      });
+    }
   }
 
   @override
@@ -172,6 +202,7 @@ class _ProfileViewState extends State<ProfileView>
     _phoneController.dispose();
     _descriptionController.dispose();
     _animationController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -216,6 +247,7 @@ class _ProfileViewState extends State<ProfileView>
 
   Widget _buildDescriptionField() {
     return Column(
+      key: _descriptionFieldKey, // Add key to locate this widget
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -239,6 +271,14 @@ class _ProfileViewState extends State<ProfileView>
                   _saveProfile('description', _descriptionController.text);
                 }
                 setState(() => _isEditingDescription = !_isEditingDescription);
+
+                // If we're starting to edit, ensure the field is visible
+                if (_isEditingDescription) {
+                  // Adding a small delay to ensure state updates before scrolling
+                  Future.delayed(const Duration(milliseconds: 100), () {
+                    _scrollToDescriptionField();
+                  });
+                }
               },
             ),
           ],
@@ -260,6 +300,7 @@ class _ProfileViewState extends State<ProfileView>
                     contentPadding:
                         EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                   ),
+                  onTap: _scrollToDescriptionField,
                 ),
               )
             : Container(
@@ -294,6 +335,10 @@ class _ProfileViewState extends State<ProfileView>
           onPressed: () {
             setState(() {
               _isEditingDescription = true;
+            });
+            // Adding a small delay to ensure state updates before scrolling
+            Future.delayed(const Duration(milliseconds: 100), () {
+              _scrollToDescriptionField();
             });
           },
           style: TextButton.styleFrom(
@@ -441,28 +486,6 @@ class _ProfileViewState extends State<ProfileView>
           .collection('surveys')
           .doc(widget.profile.userId)
           .update({field: value});
-
-      if (field == 'name' ||
-          field == 'clubs' ||
-          field == 'sports' ||
-          field == 'movie_genres' ||
-          field == 'music_genres' ||
-          field == 'hangout_spot') {
-        String new_description = await _generateProfileDescription(
-            field == 'name' ? value : widget.profile.name,
-            widget.profile.gender,
-            field == 'clubs' ? value : _selectedClubs,
-            field == 'sports' ? value : _selectedSports,
-            field == 'movie_genres' ? value : _selectedMovieGenres,
-            field == 'music_genres' ? value : _selectedMusicGenres,
-            field == 'hangout_spot' ? value : _selectedHangoutSpot,
-            widget.profile.relationshipType);
-
-        await FirebaseFirestore.instance
-            .collection('surveys')
-            .doc(widget.profile.userId)
-            .update({"description": new_description});
-      }
 
       widget.onProfileUpdated();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -903,7 +926,7 @@ Business and Consulting club:Business and consulting club
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: true, // Important for keyboard adjustments
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -935,72 +958,60 @@ Business and Consulting club:Business and consulting club
             stops: [0.0, 0.6, 1.0],
           ),
         ),
-        child: AnimatedPadding(
-          duration: const Duration(milliseconds: 200),
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              child: AnimationLimiter(
-                child: Column(
-                  children: AnimationConfiguration.toStaggeredList(
-                    duration: const Duration(milliseconds: 600),
-                    childAnimationBuilder: (widget) => SlideAnimation(
-                      horizontalOffset: 50.0,
-                      child: FadeInAnimation(child: widget),
-                    ),
-                    children: [
-                      const SizedBox(height: 24),
-                      Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          GestureDetector(
-                            onTap: _isUploadingImage ? null : _pickImage,
-                            child: Hero(
-                              tag: 'profileImage-${widget.profile.userId}',
-                              child: Container(
-                                width: 140,
-                                height: 140,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: const Color(0xFF6C63FF),
-                                    width: 3,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
+        child: SafeArea(
+          child: SingleChildScrollView(
+            controller: _scrollController, // Add the scroll controller here
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: AnimationLimiter(
+              child: Column(
+                children: AnimationConfiguration.toStaggeredList(
+                  duration: const Duration(milliseconds: 600),
+                  childAnimationBuilder: (widget) => SlideAnimation(
+                    horizontalOffset: 50.0,
+                    child: FadeInAnimation(child: widget),
+                  ),
+                  children: [
+                    const SizedBox(height: 24),
+                    Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        GestureDetector(
+                          onTap: _isUploadingImage ? null : _pickImage,
+                          child: Hero(
+                            tag: 'profileImage-${widget.profile.userId}',
+                            child: Container(
+                              width: 140,
+                              height: 140,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF6C63FF),
+                                  width: 3,
                                 ),
-                                child: ClipOval(
-                                  child: profilepictureurl.isNotEmpty
-                                      ? CachedNetworkImage(
-                                          imageUrl: profilepictureurl,
-                                          cacheManager:
-                                              CustomProfileImageCacheManager
-                                                  .instance,
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) =>
-                                              const Center(
-                                            child: CircularProgressIndicator(
-                                              color: Color(0xFF6C63FF),
-                                            ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 5),
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: profilepictureurl.isNotEmpty
+                                    ? CachedNetworkImage(
+                                        imageUrl: profilepictureurl,
+                                        cacheManager:
+                                            CustomProfileImageCacheManager
+                                                .instance,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) =>
+                                            const Center(
+                                          child: CircularProgressIndicator(
+                                            color: Color(0xFF6C63FF),
                                           ),
-                                          errorWidget: (context, url, error) =>
-                                              Container(
-                                            color: Colors.grey[200],
-                                            child: const Icon(
-                                              Icons.person,
-                                              size: 80,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                        )
-                                      : Container(
+                                        ),
+                                        errorWidget: (context, url, error) =>
+                                            Container(
                                           color: Colors.grey[200],
                                           child: const Icon(
                                             Icons.person,
@@ -1008,209 +1019,212 @@ Business and Consulting club:Business and consulting club
                                             color: Colors.grey,
                                           ),
                                         ),
-                                ),
+                                      )
+                                    : Container(
+                                        color: Colors.grey[200],
+                                        child: const Icon(
+                                          Icons.person,
+                                          size: 80,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
                               ),
                             ),
                           ),
-                          Container(
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF6C63FF),
-                              shape: BoxShape.circle,
-                            ),
-                            child: _isUploadingImage
-                                ? const Padding(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : IconButton(
-                                    icon: const Icon(
-                                      Icons.camera_alt,
-                                      color: Colors.white,
-                                    ),
-                                    onPressed: _pickImage,
-                                  ),
+                        ),
+                        Container(
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF6C63FF),
+                            shape: BoxShape.circle,
                           ),
-                        ],
+                          child: _isUploadingImage
+                              ? const Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : IconButton(
+                                  icon: const Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.white,
+                                  ),
+                                  onPressed: _pickImage,
+                                ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _buildAnimatedCard(child: _buildNameField()),
+                    _buildAnimatedCard(child: _buildPhoneField()),
+                    _buildAnimatedCard(child: _buildDescriptionField()),
+                    _buildAnimatedCard(child: _buildDescriptionActions()),
+                    _buildAnimatedCard(
+                      child: _buildSingleSelectField(
+                        label: "Favorite Hangout Spot",
+                        isEditing: _isEditingHangout,
+                        options: _hangoutSpots,
+                        selectedValue: _selectedHangoutSpot,
+                        onEdit: () {
+                          if (_isEditingHangout) {
+                            _saveProfile('hangout_spot', _selectedHangoutSpot);
+                          }
+                          setState(
+                              () => _isEditingHangout = !_isEditingHangout);
+                        },
+                        onSelectionChanged: (value) {
+                          setState(() {
+                            _selectedHangoutSpot = value;
+                          });
+                        },
                       ),
-                      const SizedBox(height: 20),
-                      _buildAnimatedCard(child: _buildNameField()),
-                      _buildAnimatedCard(child: _buildPhoneField()),
-                      _buildAnimatedCard(child: _buildDescriptionField()),
-                      _buildAnimatedCard(child: _buildDescriptionActions()),
-                      _buildAnimatedCard(
-                        child: _buildSingleSelectField(
-                          label: "Favorite Hangout Spot",
-                          isEditing: _isEditingHangout,
-                          options: _hangoutSpots,
-                          selectedValue: _selectedHangoutSpot,
-                          onEdit: () {
-                            if (_isEditingHangout) {
-                              _saveProfile(
-                                  'hangout_spot', _selectedHangoutSpot);
-                            }
-                            setState(
-                                () => _isEditingHangout = !_isEditingHangout);
-                          },
-                          onSelectionChanged: (value) {
-                            setState(() {
-                              _selectedHangoutSpot = value;
-                            });
+                    ),
+                    _buildAnimatedCard(
+                      child: _buildMultiSelectField(
+                        "Clubs",
+                        _isEditingClubs,
+                        _allClubs,
+                        _selectedClubs,
+                        () {
+                          if (_isEditingClubs) {
+                            _saveProfile('clubs', _selectedClubs);
+                          }
+                          setState(() => _isEditingClubs = !_isEditingClubs);
+                        },
+                      ),
+                    ),
+                    _buildAnimatedCard(
+                      child: _buildMultiSelectField(
+                        "Preferred Movie Genres",
+                        _isEditingMovieGenres,
+                        _allMovieGenres,
+                        _selectedMovieGenres,
+                        () {
+                          if (_isEditingMovieGenres) {
+                            _saveProfile('movie_genres', _selectedMovieGenres);
+                          }
+                          setState(() =>
+                              _isEditingMovieGenres = !_isEditingMovieGenres);
+                        },
+                      ),
+                    ),
+                    _buildAnimatedCard(
+                      child: _buildMultiSelectField(
+                        "Preferred Music Genres",
+                        _isEditingMusicGenres,
+                        _allMusicGenres,
+                        _selectedMusicGenres,
+                        () {
+                          if (_isEditingMusicGenres) {
+                            _saveProfile('music_genres', _selectedMusicGenres);
+                          }
+                          setState(() =>
+                              _isEditingMusicGenres = !_isEditingMusicGenres);
+                        },
+                      ),
+                    ),
+                    _buildAnimatedCard(
+                      child: _buildMultiSelectField(
+                        "Sports",
+                        _isEditingSports,
+                        _allSports,
+                        _selectedSports,
+                        () {
+                          if (_isEditingSports) {
+                            _saveProfile('sports', _selectedSports);
+                          }
+                          setState(() => _isEditingSports = !_isEditingSports);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildButton(
+                          "Logout",
+                          const Color(0xFF6C63FF),
+                          Colors.white,
+                          () async {
+                            await FirebaseAuth.instance.signOut();
+                            Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              '/',
+                              (route) => false,
+                            );
                           },
                         ),
-                      ),
-                      _buildAnimatedCard(
-                        child: _buildMultiSelectField(
-                          "Clubs",
-                          _isEditingClubs,
-                          _allClubs,
-                          _selectedClubs,
-                          () {
-                            if (_isEditingClubs) {
-                              _saveProfile('clubs', _selectedClubs);
-                            }
-                            setState(() => _isEditingClubs = !_isEditingClubs);
-                          },
-                        ),
-                      ),
-                      _buildAnimatedCard(
-                        child: _buildMultiSelectField(
-                          "Preferred Movie Genres",
-                          _isEditingMovieGenres,
-                          _allMovieGenres,
-                          _selectedMovieGenres,
-                          () {
-                            if (_isEditingMovieGenres) {
-                              _saveProfile(
-                                  'movie_genres', _selectedMovieGenres);
-                            }
-                            setState(() =>
-                                _isEditingMovieGenres = !_isEditingMovieGenres);
-                          },
-                        ),
-                      ),
-                      _buildAnimatedCard(
-                        child: _buildMultiSelectField(
-                          "Preferred Music Genres",
-                          _isEditingMusicGenres,
-                          _allMusicGenres,
-                          _selectedMusicGenres,
-                          () {
-                            if (_isEditingMusicGenres) {
-                              _saveProfile(
-                                  'music_genres', _selectedMusicGenres);
-                            }
-                            setState(() =>
-                                _isEditingMusicGenres = !_isEditingMusicGenres);
-                          },
-                        ),
-                      ),
-                      _buildAnimatedCard(
-                        child: _buildMultiSelectField(
-                          "Sports",
-                          _isEditingSports,
-                          _allSports,
-                          _selectedSports,
-                          () {
-                            if (_isEditingSports) {
-                              _saveProfile('sports', _selectedSports);
-                            }
-                            setState(
-                                () => _isEditingSports = !_isEditingSports);
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildButton(
-                            "Logout",
-                            const Color(0xFF6C63FF),
-                            Colors.white,
-                            () async {
-                              await FirebaseAuth.instance.signOut();
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 20),
+                      child: _buildButton(
+                        "Delete Account",
+                        Colors.redAccent.shade400,
+                        Colors.white,
+                        () async {
+                          bool confirmDelete = false;
+                          await showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text("Delete Account?"),
+                              content: const Text(
+                                "This action cannot be undone. All your data will be permanently removed.",
+                              ),
+                              actions: [
+                                TextButton(
+                                  child: const Text("Cancel"),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                                TextButton(
+                                  child: const Text(
+                                    "Delete",
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                  onPressed: () {
+                                    confirmDelete = true;
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirmDelete) {
+                            try {
+                              // Delete Firestore document
+                              await FirebaseFirestore.instance
+                                  .collection('surveys')
+                                  .doc(widget.profile.userId)
+                                  .delete();
+
+                              // Delete profile picture if exists
+                              if (profilepictureurl.isNotEmpty) {
+                                await FirebaseStorage.instance
+                                    .refFromURL(profilepictureurl)
+                                    .delete();
+                              }
+
+                              // Delete user account
+                              await FirebaseAuth.instance.currentUser?.delete();
+
                               Navigator.pushNamedAndRemoveUntil(
                                 context,
                                 '/',
                                 (route) => false,
                               );
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 20),
-                        child: _buildButton(
-                          "Delete Account",
-                          Colors.redAccent.shade400,
-                          Colors.white,
-                          () async {
-                            bool confirmDelete = false;
-                            await showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text("Delete Account?"),
-                                content: const Text(
-                                  "This action cannot be undone. All your data will be permanently removed.",
-                                ),
-                                actions: [
-                                  TextButton(
-                                    child: const Text("Cancel"),
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                  ),
-                                  TextButton(
-                                    child: const Text(
-                                      "Delete",
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                    onPressed: () {
-                                      confirmDelete = true;
-                                      Navigator.of(context).pop();
-                                    },
-                                  ),
-                                ],
-                              ),
-                            );
-
-                            if (confirmDelete) {
-                              try {
-                                // Delete Firestore document
-                                await FirebaseFirestore.instance
-                                    .collection('surveys')
-                                    .doc(widget.profile.userId)
-                                    .delete();
-
-                                // Delete profile picture if exists
-                                if (profilepictureurl.isNotEmpty) {
-                                  await FirebaseStorage.instance
-                                      .refFromURL(profilepictureurl)
-                                      .delete();
-                                }
-
-                                // Delete user account
-                                await FirebaseAuth.instance.currentUser
-                                    ?.delete();
-
-                                Navigator.pushNamedAndRemoveUntil(
-                                  context,
-                                  '/',
-                                  (route) => false,
-                                );
-                              } catch (e) {
-                                showError("Error deleting account: $e");
-                              }
+                            } catch (e) {
+                              showError("Error deleting account: $e");
                             }
-                          },
-                        ),
+                          }
+                        },
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

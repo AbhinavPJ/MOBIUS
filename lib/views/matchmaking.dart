@@ -114,7 +114,8 @@ class MatchmakingProfile {
         rightswipedby: List<String>.from(data['rightswipedby']),
         description: data['description'] ?? '',
         heleftwiped: List<String>.from(data['Heleftwiped'] ?? []),
-        swipeTimestamps: swipeTimestamps);
+        swipeTimestamps: swipeTimestamps,
+        catfishradar: data['catfishradar']);
   }
 }
 

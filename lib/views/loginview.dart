@@ -130,7 +130,7 @@ class _LoginviewState extends State<Loginview>
                               ),
                               const SizedBox(height: 6),
                               const Text(
-                                "Swipe. Match. Meet. Exclusively for IITD.",
+                                "Swipe. Match. Meet. Exclusively for Students.",
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 14,

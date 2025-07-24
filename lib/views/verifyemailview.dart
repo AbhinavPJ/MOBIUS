@@ -59,7 +59,7 @@ class _VerifyEmailViewState extends State<VerifyEmailView> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      "Swipe. Match. Meet. Exclusively for IITD.",
+                      "Swipe. Match. Meet. Exclusively for Students.",
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,

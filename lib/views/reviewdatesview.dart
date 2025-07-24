@@ -399,7 +399,572 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
                 )
               : _matches.isEmpty
                   ? AnimationLimiter(child: _buildEmptyState())
-                  : AnimationLimiter(child: _buildMatchesList()),
+                  : AnimationLimiter(child: _buildSeparatedMatchesList()),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeparatedMatchesList() {
+    // Separate matches into rated and unrated
+    List<MatchData> unratedMatches = _matches
+        .where((match) => !ratedProfiles.contains(match.userId))
+        .toList();
+
+    List<MatchData> ratedMatches = _matches
+        .where((match) => ratedProfiles.contains(match.userId))
+        .toList();
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Unrated Users Section (Top)
+          if (unratedMatches.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _buildSectionHeader(
+              title: "New Matches to Review",
+              count: unratedMatches.length,
+              icon: Icons.favorite_border,
+              color: const Color(0xFF6C63FF),
+            ),
+            _buildMatchesList(unratedMatches, startIndex: 0),
+          ],
+
+          // Rated Users Section (Bottom)
+          if (ratedMatches.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _buildSectionHeader(
+              title: "Previously Rated Matches",
+              count: ratedMatches.length,
+              icon: Icons.star,
+              color: const Color(0xFF4CAF50),
+            ),
+            _buildMatchesList(ratedMatches, startIndex: unratedMatches.length),
+          ],
+
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader({
+    required String title,
+    required int count,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                  Text(
+                    "$count matches",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: color.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMatchesList(List<MatchData> matches, {required int startIndex}) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(top: 16, bottom: 0),
+      itemCount: matches.length,
+      itemBuilder: (context, index) {
+        final match = matches[index];
+        return AnimationConfiguration.staggeredList(
+          position: startIndex + index,
+          duration: const Duration(milliseconds: 500),
+          child: SlideAnimation(
+            horizontalOffset: 50.0,
+            child: FadeInAnimation(
+              child: _buildMatchCard(match),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMatchCard(MatchData match) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      return const Text("User not logged in");
+    }
+    return FutureBuilder(
+      future: Future.wait([
+        FirebaseFirestore.instance
+            .collection('surveys')
+            .doc(currentUser.uid)
+            .get(),
+        FirebaseFirestore.instance
+            .collection('surveys')
+            .doc(match.userId)
+            .get(),
+      ]),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.hasError) {
+          return const Text("Error loading profile data.");
+        }
+
+        final userDoc = snapshot.data![0];
+        final matchDoc = snapshot.data![1];
+
+        final cur = MatchmakingProfile.fromFirestore(userDoc);
+        final curmatch = MatchmakingProfile.fromFirestore(matchDoc);
+
+        return _buildMatchCardContent(
+            match, cur, curmatch, match.matchScore % 100);
+      },
+    );
+  }
+
+  Widget _buildMatchCardContent(MatchData match, MatchmakingProfile cur,
+      MatchmakingProfile curmatch, double matchPercentage) {
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      throw Exception("User not logged in");
+    }
+
+    final bool isRated = ratedProfiles.contains(match.userId);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+      child: Card(
+        elevation: 6,
+        shadowColor: Colors.black38,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFE3F2FD), // Soft pastel blue
+                Color(0xFFF3E5F5), // Very soft lavender
+                Color(0xFFFFFFFF), // Pure white
+              ],
+              stops: [0.0, 0.6, 1.0],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Stack(
+              children: [
+                ExpansionTile(
+                  collapsedIconColor: const Color(0xFF6C63FF),
+                  iconColor: const Color(0xFF6C63FF),
+                  backgroundColor: Colors.transparent,
+                  collapsedBackgroundColor: Colors.transparent,
+                  title: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Hero(
+                          tag: 'match-${match.userId}',
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF6C63FF).withOpacity(0.2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: CircleAvatar(
+                              radius: 34,
+                              backgroundColor: const Color(0xFF6C63FF),
+                              child: CircleAvatar(
+                                radius: 32,
+                                backgroundImage: match.profilePicture.isNotEmpty
+                                    ? CachedNetworkImageProvider(
+                                        match.profilePicture,
+                                        cacheManager:
+                                            CustomProfileImageCacheManager
+                                                .instance,
+                                      )
+                                    : null,
+                                child: match.profilePicture.isEmpty
+                                    ? const Icon(Icons.person,
+                                        size: 32, color: Colors.white70)
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                match.name,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2E2E2E),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              PurpleTextWithGroq(
+                                currentUser: cur,
+                                match: curmatch,
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.deepPurpleAccent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "${matchPercentage.toStringAsFixed(1)}%",
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Divider(
+                            color: Color(0xFFE3F2FD),
+                            thickness: 1.5,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Match Progress Bar
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Match Compatibility',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black.withOpacity(0.7),
+                                ),
+                              ),
+                              Text(
+                                '${matchPercentage.toInt()}%',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black.withOpacity(0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          TweenAnimationBuilder(
+                            tween: Tween<double>(
+                                begin: 0.0, end: matchPercentage / 100),
+                            duration: const Duration(milliseconds: 800),
+                            curve: Curves.easeInOut,
+                            builder: (context, double value, child) {
+                              return Stack(
+                                children: [
+                                  // Background track
+                                  Container(
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  // Progress indicator
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      return Container(
+                                        height: 12,
+                                        width: constraints.maxWidth * value,
+                                        decoration: BoxDecoration(
+                                          color: Colors.deepPurpleAccent,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFFFF5722)
+                                                  .withOpacity(0.3),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+
+                          // Rating section if not rated yet
+                          if (!isRated) ...[
+                            const SizedBox(height: 16),
+                            _buildRatingSection(match),
+                          ],
+
+                          // Contact info
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: const Color(0xFFE3F2FD), width: 1),
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor:
+                                      const Color(0xFF6C63FF).withOpacity(0.2),
+                                  child: const Icon(
+                                    Icons.phone,
+                                    color: Color(0xFF6C63FF),
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "Phone",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                    Text(
+                                      match.contactNumber,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Buttons
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _viewFullProfile(match),
+                                  icon: const Icon(Icons.person_outline,
+                                      color: Colors.white),
+                                  label: const Text(
+                                    "View Profile",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF6C63FF),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    elevation: 4,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () =>
+                                      _openWhatsApp(match.contactNumber),
+                                  icon: const Icon(Icons.chat,
+                                      color: Colors.white),
+                                  label: const Text(
+                                    "WhatsApp",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF25D366),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    elevation: 4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                // Status badge for rated profiles
+                if (isRated)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4CAF50),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(
+                            Icons.star,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Rated',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+// Helper method to create styled cards
+  Widget _buildAnimatedCard({required Widget child}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Card(
+        elevation: 6,
+        shadowColor: Colors.black38,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFE3F2FD), // Soft pastel blue
+                Color(0xFFF3E5F5), // Very soft lavender
+                Color(0xFFFFFFFF), // Pure white
+              ],
+              stops: [0.0, 0.6, 1.0],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: child,
+          ),
         ),
       ),
     );
@@ -465,428 +1030,6 @@ class _ReviewDatePageState extends State<ReviewDatePage> {
                 ],
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMatchesList() {
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 16, bottom: 24),
-      itemCount: _matches.length,
-      itemBuilder: (context, index) {
-        final match = _matches[index];
-        return AnimationConfiguration.staggeredList(
-          position: index,
-          duration: const Duration(milliseconds: 500),
-          child: SlideAnimation(
-            horizontalOffset: 50.0,
-            child: FadeInAnimation(
-              child: _buildMatchCard(match),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMatchCard(MatchData match) {
-    final currentUser = FirebaseAuth.instance.currentUser;
-
-    if (currentUser == null) {
-      return const Text("User not logged in");
-    }
-    return FutureBuilder(
-      future: Future.wait([
-        FirebaseFirestore.instance
-            .collection('surveys')
-            .doc(currentUser.uid)
-            .get(),
-        FirebaseFirestore.instance
-            .collection('surveys')
-            .doc(match.userId)
-            .get(),
-      ]),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (!snapshot.hasData || snapshot.hasError) {
-          return const Text("Error loading profile data.");
-        }
-
-        final userDoc = snapshot.data![0];
-        final matchDoc = snapshot.data![1];
-
-        final cur = MatchmakingProfile.fromFirestore(userDoc);
-        final curmatch = MatchmakingProfile.fromFirestore(matchDoc);
-
-        return _buildMatchCardContent(
-            match, cur, curmatch, match.matchScore % 100);
-      },
-    );
-  }
-
-  Widget _buildMatchCardContent(MatchData match, MatchmakingProfile cur,
-      MatchmakingProfile curmatch, double matchPercentage) {
-    final User? currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      throw Exception("User not logged in");
-    }
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-      child: Card(
-        elevation: 6,
-        shadowColor: Colors.black38,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFE3F2FD), // Soft pastel blue
-                Color(0xFFF3E5F5), // Very soft lavender
-                Color(0xFFFFFFFF), // Pure white
-              ],
-              stops: [0.0, 0.6, 1.0],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: ExpansionTile(
-              collapsedIconColor: const Color(0xFF6C63FF),
-              iconColor: const Color(0xFF6C63FF),
-              backgroundColor: Colors.transparent,
-              collapsedBackgroundColor: Colors.transparent,
-              title: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Hero(
-                      tag: 'match-${match.userId}',
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFF6C63FF).withOpacity(0.2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: CircleAvatar(
-                          radius: 34,
-                          backgroundColor: const Color(0xFF6C63FF),
-                          child: CircleAvatar(
-                            radius: 32,
-                            backgroundImage: match.profilePicture.isNotEmpty
-                                ? CachedNetworkImageProvider(
-                                    match.profilePicture,
-                                    cacheManager:
-                                        CustomProfileImageCacheManager.instance,
-                                  )
-                                : null,
-                            child: match.profilePicture.isEmpty
-                                ? const Icon(Icons.person,
-                                    size: 32, color: Colors.white70)
-                                : null,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            match.name,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2E2E2E),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          PurpleTextWithGroq(
-                            currentUser: cur,
-                            match: curmatch,
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.deepPurpleAccent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            "${matchPercentage.toStringAsFixed(1)}%",
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Divider(
-                        color: Color(0xFFE3F2FD),
-                        thickness: 1.5,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Match Progress Bar (similar to achievement progress)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Match Compatibility',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black.withOpacity(0.7),
-                            ),
-                          ),
-                          Text(
-                            '${matchPercentage.toInt()}%',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black.withOpacity(0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      TweenAnimationBuilder(
-                        tween: Tween<double>(
-                            begin: 0.0, end: matchPercentage / 100),
-                        duration: const Duration(milliseconds: 800),
-                        curve: Curves.easeInOut,
-                        builder: (context, double value, child) {
-                          return Stack(
-                            children: [
-                              // Background track
-                              Container(
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              // Progress indicator
-                              LayoutBuilder(
-                                builder: (context, constraints) {
-                                  return Container(
-                                    height: 12,
-                                    width: constraints.maxWidth * value,
-                                    decoration: BoxDecoration(
-                                      color: Colors.deepPurpleAccent,
-                                      borderRadius: BorderRadius.circular(10),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(0xFFFF5722)
-                                              .withOpacity(0.3),
-                                          blurRadius: 6,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-
-                      // Rating section if needed
-                      if (!ratedProfiles.contains(match.userId)) ...[
-                        const SizedBox(height: 16),
-                        _buildRatingSection(match),
-                      ],
-
-                      // Contact info - redesigned
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: const Color(0xFFE3F2FD), width: 1),
-                        ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 20,
-                              backgroundColor:
-                                  const Color(0xFF6C63FF).withOpacity(0.2),
-                              child: const Icon(
-                                Icons.phone,
-                                color: Color(0xFF6C63FF),
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  "Phone",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                                Text(
-                                  match.contactNumber,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Buttons
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () => _viewFullProfile(match),
-                              icon: const Icon(Icons.person_outline,
-                                  color: Colors.white),
-                              label: const Text(
-                                "View Profile",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF6C63FF),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                elevation: 4,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () =>
-                                  _openWhatsApp(match.contactNumber),
-                              icon: const Icon(Icons.chat, color: Colors.white),
-                              label: const Text(
-                                "WhatsApp",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF25D366),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                elevation: 4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Helper method to create styled cards
-  Widget _buildAnimatedCard({required Widget child}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Card(
-        elevation: 6,
-        shadowColor: Colors.black38,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFE3F2FD), // Soft pastel blue
-                Color(0xFFF3E5F5), // Very soft lavender
-                Color(0xFFFFFFFF), // Pure white
-              ],
-              stops: [0.0, 0.6, 1.0],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: child,
           ),
         ),
       ),
@@ -1367,6 +1510,7 @@ Business and Consulting club:Business and consulting club
 "eDc": entrepreneurship club,
 "Music Club": Musics club,
 "FACC":Painting,designing stuff and designing fashion(creative people here),
+"HS": Hindi Samiti,
 "Envogue": Fashion club,
 "Enactus":NGO social service etc. club,
 "Debsoc":Debate society,

@@ -252,6 +252,7 @@ Business and Consulting club:Business and consulting club
 "Dance club":they dance
 "Drama club":Drama club,
 "Spic Macay":Classical dance,
+"HS": Hindi Samiti,
 """;
     groq.startChat();
     GroqResponse response = await groq.sendMessage(promptu);
@@ -899,6 +900,7 @@ Business and Consulting club:Business and consulting club
       "PFC",
       "Music Club",
       "FACC",
+      "HS",
       "Envogue",
       "Enactus",
       "Debsoc",
